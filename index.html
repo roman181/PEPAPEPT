@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEPAPEPT COINT | WALLET INTEGRATION v52</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js">
+    const miniGame = {
+        active: false,
+        timer: 10,
+        interval: null,
+        startPrice: 0,
+        amount: 0,
+        direction: '',
+
+        start(dir) {
+            if(!auth.currentUser) return alert("Bitte einloggen!");
+            if(this.active) return;
+
+            const input = document.getElementById('mg-input');
+            const amt = parseInt(input.value);
+
+            if(isNaN(amt) || amt < 10) return alert("Mindesteinsatz: 10 PPC");
+            if(amt > auth.currentUser.balance) return alert("Zu wenig Guthaben!");
+
+            // Init Game
+            this.active = true;
+            this.amount = amt;
+            this.direction = dir;
+            this.startPrice = engine.currentPrice; // Grab current engine price
+            this.timer = 10;
+
+            // Deduct Balance
+            auth.currentUser.balance -= amt;
+            this.updateUI(true);
+            saveUsers();
+
+            // Start Timer
+            this.interval = setInterval(() => {
+                this.timer--;
+                document.getElementById('mg-timer').innerText = `00:${this.timer.toString().padStart(2, '0')}`;
+                if(this.timer <= 3) document.getElementById('mg-timer').classList.add('text-red-500');
+
+                if(this.timer <= 0) this.finish();
+            }, 1000);
+        },
+
+        finish() {
+            clearInterval(this.interval);
+            const endPrice = engine.currentPrice;
+            const won = (this.direction === 'up' && endPrice > this.startPrice) || 
+                        (this.direction === 'down' && endPrice < this.startPrice);
+
+            const resultBox = document.getElementById('mg-result');
+            const statusText = document.getElementById('mg-status');
+            const payoutText = document.getElementById('mg-payout');
+
+            resultBox.classList.remove('hidden-section');
+
+            if(won) {
+                const winAmt = this.amount * 2;
+                auth.currentUser.balance += winAmt;
+                statusText.innerText = `Kurs: ${endPrice.toFixed(6)} (${this.direction.toUpperCase()} ✓)`;
+                payoutText.innerText = `+${winAmt} PPC GEWONNEN!`;
+                payoutText.className = "text-sm font-bold text-neon";
+            } else {
+                statusText.innerText = `Kurs: ${endPrice.toFixed(6)} (${this.direction.toUpperCase()} ✗)`;
+                payoutText.innerText = `-${this.amount} PPC VERLOREN`;
+                payoutText.className = "text-sm font-bold text-red-500";
+            }
+
+            saveUsers();
+            updateLeaderboard(); // Ensure leaderboard updates
+            this.updateUI(false);
+
+            setTimeout(() => {
+                this.active = false;
+                document.getElementById('mg-timer').innerText = "READY";
+                document.getElementById('mg-timer').classList.remove('text-red-500');
+                // resultBox.classList.add('hidden-section'); // Keep visible for a bit or until next game
+            }, 2000);
+        },
+
+        updateUI(running) {
+            document.getElementById('wallet-balance').innerText = auth.currentUser.balance.toLocaleString('de-DE');
+            document.getElementById('mg-input').disabled = running;
+            document.getElementById('btn-up').disabled = running;
+            document.getElementById('btn-down').disabled = running;
+            if(running) {
+                document.getElementById('btn-up').classList.add('opacity-50');
+                document.getElementById('btn-down').classList.add('opacity-50');
+                document.getElementById('mg-result').classList.add('hidden-section');
+            } else {
+                document.getElementById('btn-up').classList.remove('opacity-50');
+                document.getElementById('btn-down').classList.remove('opacity-50');
+            }
+        }
+    };
+
+</script>
+    <script src="https://cdn.tailwindcss.com">
+    const miniGame = {
+        active: false,
+        timer: 10,
+        interval: null,
+        startPrice: 0,
+        amount: 0,
+        direction: '',
+
+        start(dir) {
+            if(!auth.currentUser) return alert("Bitte einloggen!");
+            if(this.active) return;
+
+            const input = document.getElementById('mg-input');
+            const amt = parseInt(input.value);
+
+            if(isNaN(amt) || amt < 10) return alert("Mindesteinsatz: 10 PPC");
+            if(amt > auth.currentUser.balance) return alert("Zu wenig Guthaben!");
+
+            // Init Game
+            this.active = true;
+            this.amount = amt;
+            this.direction = dir;
+            this.startPrice = engine.currentPrice; // Grab current engine price
+            this.timer = 10;
+
+            // Deduct Balance
+            auth.currentUser.balance -= amt;
+            this.updateUI(true);
+            saveUsers();
+
+            // Start Timer
+            this.interval = setInterval(() => {
+                this.timer--;
+                document.getElementById('mg-timer').innerText = `00:${this.timer.toString().padStart(2, '0')}`;
+                if(this.timer <= 3) document.getElementById('mg-timer').classList.add('text-red-500');
+
+                if(this.timer <= 0) this.finish();
+            }, 1000);
+        },
+
+        finish() {
+            clearInterval(this.interval);
+            const endPrice = engine.currentPrice;
+            const won = (this.direction === 'up' && endPrice > this.startPrice) || 
+                        (this.direction === 'down' && endPrice < this.startPrice);
+
+            const resultBox = document.getElementById('mg-result');
+            const statusText = document.getElementById('mg-status');
+            const payoutText = document.getElementById('mg-payout');
+
+            resultBox.classList.remove('hidden-section');
+
+            if(won) {
+                const winAmt = this.amount * 2;
+                auth.currentUser.balance += winAmt;
+                statusText.innerText = `Kurs: ${endPrice.toFixed(6)} (${this.direction.toUpperCase()} ✓)`;
+                payoutText.innerText = `+${winAmt} PPC GEWONNEN!`;
+                payoutText.className = "text-sm font-bold text-neon";
+            } else {
+                statusText.innerText = `Kurs: ${endPrice.toFixed(6)} (${this.direction.toUpperCase()} ✗)`;
+                payoutText.innerText = `-${this.amount} PPC VERLOREN`;
+                payoutText.className = "text-sm font-bold text-red-500";
+            }
+
+            saveUsers();
+            updateLeaderboard(); // Ensure leaderboard updates
+            this.updateUI(false);
+
+            setTimeout(() => {
+                this.active = false;
+                document.getElementById('mg-timer').innerText = "READY";
+                document.getElementById('mg-timer').classList.remove('text-red-500');
+                // resultBox.classList.add('hidden-section'); // Keep visible for a bit or until next game
+            }, 2000);
+        },
+
+        updateUI(running) {
+            document.getElementById('wallet-balance').innerText = auth.currentUser.balance.toLocaleString('de-DE');
+            document.getElementById('mg-input').disabled = running;
+            document.getElementById('btn-up').disabled = running;
+            document.getElementById('btn-down').disabled = running;
+            if(running) {
+                document.getElementById('btn-up').classList.add('opacity-50');
+                document.getElementById('btn-down').classList.add('opacity-50');
+                document.getElementById('mg-result').classList.add('hidden-section');
+            } else {
+                document.getElementById('btn-up').classList.remove('opacity-50');
+                document.getElementById('btn-down').classList.remove('opacity-50');
+            }
+        }
+    };
+
+</script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
+        :root { --neon: #00ff9d; --bg: #050505; }
+        body { background: radial-gradient(circle at top right, #0a1a12, #050505); color: #fff; font-family: 'Space Grotesk', sans-serif; min-height: 100vh; overflow-x: hidden; }
+        .glass { background: rgba(10, 10, 10, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(0, 255, 157, 0.15); border-radius: 20px; }
+        .neon-text { color: var(--neon); text-shadow: 0 0 15px rgba(0, 255, 157, 0.4); }
+        .input-field { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; width: 100%; outline: none; color: white; transition: 0.3s; }
+        .avatar-option { cursor: pointer; transition: 0.3s; border: 2px solid transparent; border-radius: 50%; }
+        .avatar-option.selected { border-color: var(--neon); box-shadow: 0 0 15px var(--neon); }
+        .tx-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; font-family: 'monospace'; font-size: 11px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .hidden-section { display: none !important; }
+        .balance-card { background: linear-gradient(135deg, rgba(0,255,157,0.1), rgba(0,212,255,0.1)); border: 1px solid rgba(0,255,157,0.2); }
+    
+        body { background: url('pepapept_bg.png') no-repeat center center fixed !important; background-size: cover !important; }
+</style>
+</head>
+<body class="antialiased">
+
+    <div id="auth-layer" class="fixed inset-0 z-[5000] bg-black flex items-center justify-center p-6 overflow-y-auto">
+        <div class="w-full max-w-md glass p-8 space-y-6">
+            <div class="text-center">
+                <h1 class="text-5xl font-black italic neon-text tracking-tighter">PEPAPEPT COINT</h1>
+                <p id="auth-subtitle" class="text-[10px] uppercase tracking-[0.4em] text-zinc-500">Wallet Sync Protocol</p>
+            </div>
+
+            <div id="login-form" class="space-y-4">
+                <input type="text" id="l-user" placeholder="Benutzername" class="input-field">
+                <input type="password" id="l-pass" placeholder="Passwort" class="input-field">
+                <button onclick="auth.login()" class="w-full bg-neon text-black font-black py-4 rounded-xl uppercase hover:opacity-90 transition">Terminal Login</button>
+                <p class="text-xs text-center text-zinc-500">Neu im Netzwerk? <span onclick="auth.toggle()" class="text-white underline cursor-pointer">Account erstellen</span></p>
+            </div>
+
+            <div id="reg-form" class="space-y-6 hidden-section">
+                <div class="text-center">
+                    <p class="text-[10px] uppercase font-bold text-zinc-400 mb-3">Identität wählen</p>
+                    <div class="flex justify-center gap-4" id="avatar-picker">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=A" class="w-12 h-12 avatar-option selected" onclick="auth.selectAvatar(this, 'A')">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=B" class="w-12 h-12 avatar-option" onclick="auth.selectAvatar(this, 'B')">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=C" class="w-12 h-12 avatar-option" onclick="auth.selectAvatar(this, 'C')">
+                    </div>
+                </div>
+                <input type="text" id="r-user" placeholder="Benutzername" class="input-field">
+                <input type="password" id="r-pass" placeholder="Passwort" class="input-field">
+                <button onclick="auth.register()" class="w-full bg-white text-black font-black py-4 rounded-xl uppercase hover:bg-neon transition">Registrieren + 10k Bonus</button>
+                <p class="text-xs text-center text-zinc-500" onclick="auth.toggle()">Zurück zum <span class="text-white underline cursor-pointer">Login</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-main" class="hidden-section opacity-0 transition-opacity duration-1000">
+        <nav class="p-4 flex flex-wrap justify-between items-center glass m-4 gap-4">
+            <div class="flex items-center gap-4">
+                <img id="nav-avatar" src="" class="w-12 h-12 rounded-full border border-neon/30 bg-black">
+                <div>
+                    <p id="display-username" class="text-sm font-black text-white uppercase tracking-wider"></p>
+                    <p class="text-[9px] text-neon font-bold uppercase tracking-widest">Online / Authorized</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-8 items-center">
+                <div class="text-right">
+                    <p class="text-[8px] text-zinc-500 uppercase font-bold">Mein Wallet (76C)</p>
+                    <p id="wallet-balance" class="text-lg font-black text-white">10.000,00</p>
+                </div>
+                <div class="text-right border-l border-white/10 pl-6">
+                    <p class="text-[8px] text-zinc-500 uppercase font-bold">Wert in EUR</p>
+                    <p id="wallet-value" class="text-lg font-black text-neon">0,10 €</p>
+                </div>
+                <div class="text-right border-l border-white/10 pl-6">
+                    <p class="text-[8px] text-zinc-500 uppercase font-bold">Market Cap</p>
+                    <p id="nav-mcap" class="text-lg font-black text-blue-400 italic">1.000,00 €</p>
+                </div>
+                <button onclick="location.reload()" class="bg-red-500/20 text-red-500 px-3 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-red-500 hover:text-white transition">Exit</button>
+            </div>
+        </nav>
+
+        <main class="p-4 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 glass p-6 h-[450px] relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold uppercase text-zinc-500 tracking-widest">Kursentwicklung (Live)</h2>
+                    <p id="nav-price" class="text-neon font-bold font-mono">0,00001000 €</p>
+                </div>
+                <canvas id="mainChart"></canvas>
+            </div>
+
+            <div class="space-y-6">
+
+                <!-- Mini Trading Game -->
+                <div class="glass p-5 border border-neon/20 relative overflow-hidden group">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-bold uppercase text-neon tracking-widest flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-neon animate-pulse"></span>
+                            Trading Game
+                        </h3>
+                        <span id="mg-timer" class="text-xs font-mono font-bold text-zinc-400">READY</span>
+                    </div>
+
+                    <p class="text-[10px] text-zinc-400 mb-3">
+                        Setze einen Betrag, wähle Richtung. <br>
+                        Warte <span class="text-white">10 Sekunden</span>. Gewinn: <span class="text-neon">2x Einsatz</span>.
+                    </p>
+
+                    <div class="space-y-3">
+                        <div class="relative">
+                            <input type="number" id="mg-input" value="100" min="10" class="w-full bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-sm font-mono text-white focus:border-neon/50 outline-none transition" placeholder="Einsatz">
+                            <span class="absolute right-3 top-2 text-[10px] text-zinc-500 font-bold mt-1">PPC</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="miniGame.start('up')" id="btn-up" class="bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white rounded-xl py-3 text-[11px] font-bold uppercase transition">
+                                ▲ Steigt
+                            </button>
+                            <button onclick="miniGame.start('down')" id="btn-down" class="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white rounded-xl py-3 text-[11px] font-bold uppercase transition">
+                                ▼ Sinkt
+                            </button>
+                        </div>
+
+                        <div id="mg-result" class="hidden-section text-center p-2 rounded bg-white/5 border border-white/10">
+                            <p class="text-[10px] text-zinc-400 mb-1" id="mg-status">Warte...</p>
+                            <p class="text-sm font-bold" id="mg-payout"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-6 balance-card">
+                    <p class="text-[10px] font-bold uppercase text-zinc-400 mb-1">Globale Inhaber</p>
+                    <p id="nav-holders" class="text-3xl font-black text-white">1</p>
+                </div>
+                
+                <div class="glass overflow-hidden h-[300px] flex flex-col">
+                    <div class="p-3 bg-white/5 border-b border-white/10 text-[9px] font-bold uppercase tracking-widest text-zinc-400">Netzwerk-Aktivität</div>
+                    <div id="tx-history" class="overflow-y-auto flex-1"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const auth = {
+            users: JSON.parse(localStorage.getItem('PEPAPEPT COINT_users')) || [],
+            selectedSeed: 'A',
+            currentUser: null,
+            toggle() {
+                document.getElementById('login-form').classList.toggle('hidden-section');
+                document.getElementById('reg-form').classList.toggle('hidden-section');
+            },
+            selectAvatar(el, seed) {
+                document.querySelectorAll('.avatar-option').forEach(img => img.classList.remove('selected'));
+                el.classList.add('selected');
+                this.selectedSeed = seed;
+            },
+            register() {
+                const u = document.getElementById('r-user').value.trim();
+                const p = document.getElementById('r-pass').value;
+                if(u.length < 3) return alert("Fehler!");
+                this.users.push({user: u, pass: p, avatar: this.selectedSeed, balance: 10000});
+                localStorage.setItem('PEPAPEPT COINT_users', JSON.stringify(this.users));
+                alert("Account erstellt! 10.000 76C gutgeschrieben."); this.toggle();
+            },
+            login() {
+                const u = document.getElementById('l-user').value;
+                const p = document.getElementById('l-pass').value;
+                const found = this.users.find(x => x.user === u && x.pass === p);
+                if(found) {
+                    this.currentUser = found;
+                    document.getElementById('display-username').innerText = u;
+                    document.getElementById('wallet-balance').innerText = found.balance.toLocaleString('de-DE');
+                    document.getElementById('nav-avatar').src = `https://api.dicebear.com/7.x/bottts/svg?seed=${found.avatar}`;
+                    document.getElementById('auth-layer').classList.add('hidden-section');
+                    document.getElementById('app-main').classList.remove('hidden-section');
+                    setTimeout(() => document.getElementById('app-main').classList.add('opacity-100'), 50);
+                    engine.start();
+                } else alert("Zugriff verweigert!");
+            }
+        };
+
+        const engine = {
+            chart: null, currentPrice: 0.00001, circulating: 100000000, holders: 1,
+            start() { this.initChart(); this.run(); },
+            initChart() {
+                const ctx = document.getElementById('mainChart').getContext('2d');
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: Array(40).fill(''), datasets: [{ data: Array(40).fill(0.00001), borderColor: '#00ff9d', borderWidth: 3, pointRadius: 0, fill: true, backgroundColor: 'rgba(0, 255, 157, 0.05)', tension: 0.2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.02)' } } } }
+                });
+            },
+            run() {
+                let lastMin = Math.floor(Date.now() / 60000);
+                setInterval(() => {
+                    const nowMin = Math.floor(Date.now() / 60000);
+                    if(nowMin > lastMin) { this.currentPrice *= 2; lastMin = nowMin; }
+                    let disp = this.currentPrice * (1 + (Math.random() - 0.5) * 0.001);
+                    
+                    // UI Updates
+                    document.getElementById('nav-price').innerText = disp.toFixed(8).replace('.', ',') + " €";
+                    document.getElementById('nav-mcap').innerText = (disp * this.circulating).toLocaleString('de-DE', {minimumFractionDigits: 2}) + " €";
+                    document.getElementById('nav-holders').innerText = Math.floor(this.holders).toLocaleString('de-DE');
+                    
+                    // Wallet Value Update
+                    let val = auth.currentUser.balance * disp;
+                    document.getElementById('wallet-value').innerText = val.toLocaleString('de-DE', {minimumFractionDigits: 2}) + " €";
+
+                    this.chart.data.datasets[0].data.push(disp);
+                    this.chart.data.datasets[0].data.shift();
+                    this.chart.update('none');
+                    if(Math.random() > 0.7) this.addTx();
+                }, 1000);
+            },
+            addTx() {
+                const isBuy = Math.random() > 0.35;
+                const vol = Math.floor(Math.random() * 50000 + 1000);
+                if(isBuy) { this.circulating += vol * 0.01; if(Math.random() > 0.6) this.holders++; }
+                const history = document.getElementById('tx-history');
+                const row = document.createElement('div');
+                row.className = `tx-row ${isBuy ? 'text-neon bg-neon/5' : 'text-red-500 bg-red-500/5'}`;
+                row.innerHTML = `<div>${new Date().toLocaleTimeString()}</div><div class="font-bold">${isBuy?'BUY':'SELL'}</div><div>${vol.toLocaleString()}</div><div>Ox${Math.random().toString(16).slice(2,6).toUpperCase()}</div>`;
+                history.prepend(row);
+                if(history.childNodes.length > 15) history.removeChild(history.lastChild);
+            }
+        };
+    
+    const miniGame = {
+        active: false,
+        timer: 10,
+        interval: null,
+        startPrice: 0,
+        amount: 0,
+        direction: '',
+
+        start(dir) {
+            if(!auth.currentUser) return alert("Bitte einloggen!");
+            if(this.active) return;
+
+            const input = document.getElementById('mg-input');
+            const amt = parseInt(input.value);
+
+            if(isNaN(amt) || amt < 10) return alert("Mindesteinsatz: 10 PPC");
+            if(amt > auth.currentUser.balance) return alert("Zu wenig Guthaben!");
+
+            // Init Game
+            this.active = true;
+            this.amount = amt;
+            this.direction = dir;
+            this.startPrice = engine.currentPrice; // Grab current engine price
+            this.timer = 10;
+
+            // Deduct Balance
+            auth.currentUser.balance -= amt;
+            this.updateUI(true);
+            saveUsers();
+
+            // Start Timer
+            this.interval = setInterval(() => {
+                this.timer--;
+                document.getElementById('mg-timer').innerText = `00:${this.timer.toString().padStart(2, '0')}`;
+                if(this.timer <= 3) document.getElementById('mg-timer').classList.add('text-red-500');
+
+                if(this.timer <= 0) this.finish();
+            }, 1000);
+        },
+
+        finish() {
+            clearInterval(this.interval);
+            const endPrice = engine.currentPrice;
+            const won = (this.direction === 'up' && endPrice > this.startPrice) || 
+                        (this.direction === 'down' && endPrice < this.startPrice);
+
+            const resultBox = document.getElementById('mg-result');
+            const statusText = document.getElementById('mg-status');
+            const payoutText = document.getElementById('mg-payout');
+
+            resultBox.classList.remove('hidden-section');
+
+            if(won) {
+                const winAmt = this.amount * 2;
+                auth.currentUser.balance += winAmt;
+                statusText.innerText = `Kurs: ${endPrice.toFixed(6)} (${this.direction.toUpperCase()} ✓)`;
+                payoutText.innerText = `+${winAmt} PPC GEWONNEN!`;
+                payoutText.className = "text-sm font-bold text-neon";
+            } else {
+                statusText.innerText = `Kurs: ${endPrice.toFixed(6)} (${this.direction.toUpperCase()} ✗)`;
+                payoutText.innerText = `-${this.amount} PPC VERLOREN`;
+                payoutText.className = "text-sm font-bold text-red-500";
+            }
+
+            saveUsers();
+            updateLeaderboard(); // Ensure leaderboard updates
+            this.updateUI(false);
+
+            setTimeout(() => {
+                this.active = false;
+                document.getElementById('mg-timer').innerText = "READY";
+                document.getElementById('mg-timer').classList.remove('text-red-500');
+                // resultBox.classList.add('hidden-section'); // Keep visible for a bit or until next game
+            }, 2000);
+        },
+
+        updateUI(running) {
+            document.getElementById('wallet-balance').innerText = auth.currentUser.balance.toLocaleString('de-DE');
+            document.getElementById('mg-input').disabled = running;
+            document.getElementById('btn-up').disabled = running;
+            document.getElementById('btn-down').disabled = running;
+            if(running) {
+                document.getElementById('btn-up').classList.add('opacity-50');
+                document.getElementById('btn-down').classList.add('opacity-50');
+                document.getElementById('mg-result').classList.add('hidden-section');
+            } else {
+                document.getElementById('btn-up').classList.remove('opacity-50');
+                document.getElementById('btn-down').classList.remove('opacity-50');
+            }
+        }
+    };
+
+</script>
+</body>
+</html>
