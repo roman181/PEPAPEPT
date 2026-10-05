@@ -160,6 +160,36 @@
         .btn-menu { background:#333; color:#fff; }
         .help-text { font-size:13px; line-height:1.65; color:#ccc; }
         .help-text b { color:#fff; }
+
+        /* ===== DUELL-UPGRADES ===== */
+        #vs-overlay { position:absolute; inset:0; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; z-index:60; pointer-events:auto; padding:20px; }
+        #vs-overlay.show { display:flex; }
+        .vs-box { text-align:center; max-width:420px; width:100%; animation: pop .3s ease; }
+        .vs-title { font-size:15px; letter-spacing:3px; color:var(--accent); font-weight:900; }
+        .vs-boss { font-size:30px; font-weight:900; margin:6px 0 2px; text-shadow:0 0 18px rgba(214,51,255,.6); }
+        .vs-arch { font-size:12px; color:#aaa; margin-bottom:12px; }
+        .vs-decks { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .vs-side { flex:1; background:rgba(255,255,255,.05); border:1px solid #444; border-radius:14px; padding:10px 6px; }
+        .vs-side.me { border-color:var(--primary); } .vs-side.foe { border-color:#f44336; }
+        .vs-side .icons { font-size:26px; line-height:1.4; }
+        .vs-side .nm2 { font-size:11px; color:#bbb; margin-top:4px; font-weight:800; }
+        .vs-mid { font-size:28px; font-weight:900; color:var(--gold); }
+        #vs-count { font-size:64px; font-weight:900; color:var(--gold); margin-top:10px; text-shadow:0 0 24px rgba(255,235,59,.7); }
+        #announce { position:absolute; top:32%; left:0; width:100%; text-align:center; z-index:40; pointer-events:none; opacity:0; transform:scale(.7); transition:.25s; }
+        #announce.show { opacity:1; transform:scale(1); }
+        #announce .big { font-size:38px; font-weight:900; text-shadow:0 3px 0 #000, 0 0 22px rgba(214,51,255,.8); letter-spacing:1px; }
+        #announce .sub { font-size:14px; color:var(--gold); font-weight:800; text-shadow:0 2px 4px #000; }
+        .enemy-elixir { height:5px; background:#222; border-radius:3px; margin-top:4px; overflow:hidden; border:1px solid #533; }
+        #elixir-e-bar { height:100%; width:40%; background:linear-gradient(90deg,#c62828,#ff8a65); transition:width .2s; }
+        .emote-row { display:flex; gap:6px; margin-bottom:6px; }
+        .emote-row button { flex:0 0 auto; background:rgba(255,255,255,.07); border:1px solid #444; border-radius:18px; padding:4px 12px; font-size:15px; cursor:pointer; }
+        .emote-row button:active { transform:scale(.9); }
+        #killfeed { position:absolute; top:86px; left:10px; z-index:30; pointer-events:none; display:flex; flex-direction:column; gap:4px; max-width:60vw; }
+        .kf-item { background:rgba(0,0,0,.7); border:1px solid #444; border-radius:10px; padding:3px 10px; font-size:11px; font-weight:700; animation: pop .25s ease; }
+        #timer-display.sudden { border-color:#f44336; color:#ff8a65; animation: pulse .7s infinite; }
+        .hist-box { background:rgba(255,255,255,.04); border:1px solid #333; border-radius:12px; padding:10px 12px; margin-top:10px; font-size:12px; }
+        .hist-row { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+        .hist-row:last-child { border-bottom:none; }
     </style>
 </head>
 <body>
@@ -176,8 +206,10 @@
             <div class="stats-row">
                 <div class="stat-box"><b id="stat-wave">1</b><span>🌊 Welle</span></div>
                 <div class="stat-box"><b id="stat-wins">0</b><span>🏆 Siege</span></div>
+                <div class="stat-box"><b id="stat-streak">0</b><span>🔥 Streak</span></div>
                 <div class="stat-box"><b id="stat-kills">0</b><span>💀 Kills</span></div>
             </div>
+            <div class="hist-box" id="duel-history"><b style="font-size:12px;">📜 LETZTE DUELLE</b><div id="hist-rows" style="margin-top:6px;color:#aaa;">Noch keine Duelle – starte dein erstes!</div></div>
             <div class="section-title"><span>🛒 SHOP</span></div>
             <div class="shop-scroller">
                 <div class="chest-card" onclick="buyChest('small')"><span style="font-size:38px;">📦</span><div class="chest-price">50 🪙</div><div class="chest-n">2 Karten</div></div>
@@ -218,8 +250,9 @@
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                     <div class="hp-container">
-                        <div class="hp-label"><span id="hp-e-num"></span><span>FEIND</span></div>
+                        <div class="hp-label"><span id="hp-e-num"></span><span id="enemy-name">FEIND</span></div>
                         <div class="hp-bar-bg"><div id="hp-e" class="hp-fill" style="background:linear-gradient(90deg,#c62828,#ff8a65)"></div></div>
+                        <div class="enemy-elixir" title="Gegner-Elixier"><div id="elixir-e-bar"></div></div>
                     </div>
                     <div class="top-btns">
                         <button onclick="togglePause()" title="Pause">⏸</button>
@@ -235,7 +268,30 @@
                     <div style="font-size:12px;color:#aaa;" id="kill-txt">💀 0 Kills</div>
                 </div>
                 <div class="elixir-bar-container"><div id="elixir-bar" class="elixir-fill"></div><div class="elixir-pips"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+                <div class="emote-row">
+                    <button onclick="sendEmote('😂')">😂</button>
+                    <button onclick="sendEmote('😡')">😡</button>
+                    <button onclick="sendEmote('👍')">👍</button>
+                    <button onclick="sendEmote('🔥')">🔥</button>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11px;color:#888;align-self:center;" id="arch-label"></span>
+                </div>
                 <div class="card-dock" id="card-dock"></div>
+            </div>
+        </div>
+        <div id="killfeed"></div>
+        <div id="announce"><div class="big" id="announce-big"></div><div class="sub" id="announce-sub"></div></div>
+        <div id="vs-overlay">
+            <div class="vs-box">
+                <div class="vs-title">⚔️ DUELL ⚔️</div>
+                <div class="vs-boss" id="vs-boss">BOSS</div>
+                <div class="vs-arch" id="vs-arch"></div>
+                <div class="vs-decks">
+                    <div class="vs-side me"><div class="icons" id="vs-me"></div><div class="nm2">DU</div></div>
+                    <div class="vs-mid">VS</div>
+                    <div class="vs-side foe"><div class="icons" id="vs-foe"></div><div class="nm2" id="vs-foe-name">GEGNER</div></div>
+                </div>
+                <div id="vs-count">3</div>
             </div>
         </div>
         <div class="end-overlay" id="end-overlay">
@@ -264,8 +320,8 @@
             <div class="modal-body help-text">
                 <b>🎯 Ziel:</b> Zerstöre die feindliche Basis (rechts), bevor deine fällt (links).<br><br>
                 <b>🃏 Karten legen:</b> Unten eine Karte antippen, dann auf <b>deine Spielfeldhälfte</b> tippen, um die Einheit dort zu spawnen. Position zählt – schütze deine Basis, flankiere den Gegner!<br><br>
-                <b>💧 Elixier:</b> Lädt automatisch auf (max. 10). Kills geben +1 Elixier Bonus. Nach 60s gibt es <b>doppeltes Elixier</b> (Overtime).<br><br>
-                <b>⚔️ Taktik:</b> Fernkämpfer (Sniper, Schütze) hinter Tanks (Heavy, Wache) stellen. Schnelle Einheiten (Fahrer, Spion) für Konter.<br><br>
+                <b>💧 Elixier:</b> Lädt automatisch auf (max. 10). Kills geben +1 Elixier Bonus. Ab 2:00 gibt es <b>doppeltes Elixier</b>, ab 2:30 <b>Sudden Death</b> (Türme bluten).<br><br>
+                <b>⚔️ Taktik:</b> Fernkämpfer (Sniper, Schütze) hinter Tanks (Heavy, Wache) stellen. Bomber & Pyro machen <b>Flächenschaden</b>. Gegner wechselt Taktik pro Welle (Rush / Panzer / Kontrolle) – spare Elixier für Konter!<br><br>
                 <b>📦 Shop & Upgrade:</b> Mit Coins Truhen kaufen → je 2 gleiche Karten = 1 Level-Up (+12% HP & Schaden).<br><br>
                 <b>⏱ Zeit:</b> Nach 3 Minuten gewinnt die Basis mit mehr HP. Unentschieden = Niederlage für beide? Nein – mehr HP gewinnt!
             </div>
@@ -287,9 +343,20 @@ const CFG = {
     saveKey: "pepe_arena_pro_v2",
     deckSize: 5,
     matchTime: 180,
-    overtimeAt: 60,
+    overtimeAt: 120,
+    suddenAt: 150,
     towerHP: 2000,
 };
+
+// Duell-Archetypen: rotieren pro Welle für Abwechslung
+const ARCHETYPES = [
+    { id: "rush",    name: "⚡ Rush-Angriff",  deck: ["frosch_soldat","pinguin_fahrer","pinguin_schlaeger","schwein_revolver","schwein_spion"] },
+    { id: "tank",    name: "🛡️ Panzer-Wall",  deck: ["frosch_schwer","kroete_wache","pinguin_don","schwein_schlaeger","schwein_patin"] },
+    { id: "control", name: "🎯 Fern-Kontrolle", deck: ["frosch_sniper","pinguin_schuetze","pinguin_hacker","pinguin_killer","schwein_lady"] },
+    { id: "chaos",   name: "💥 Chaos-Mix",    deck: ["frosch_pyro","pinguin_bomber","pinguin_killer","schwein_vollstrecker","frosch_sanitaeter"] },
+];
+const BOSS_NAMES = ["Don Pepe 🐧","General Kröte 🐢","Madame Patin 🐷","Hacker-Pingu 💻","Bomber-Bob 💣","Lord Sniper 🎯","Doktor Schwein 💊","Killer-Kroete 🗡️"];
+const SPLASH_KEYS = { pinguin_bomber: { r: 95, f: 0.5 }, frosch_pyro: { r: 80, f: 0.35 }, pinguin_don: { r: 70, f: 0.3 } };
 
 const UNIT_DB = {
     frosch_soldat:     { name: "Soldat",  cost: 2, hp: 230, dmg: 30,  rng: 70,  spd: 62, atkSpd: 1.2, proj: null, icon: "🐸" },
@@ -336,13 +403,16 @@ let muted = localStorage.getItem("pepe_muted")==="1";
 function safePlay(a){ if(muted || !a) return; try{ const p=a.play(); if(p&&p.catch)p.catch(()=>{});}catch(e){} }
 function safeClone(a){ if(muted || !a) return; try{ const c=a.cloneNode(); c.volume=0.35; const p=c.play(); if(p&&p.catch)p.catch(()=>{});}catch(e){} }
 
-let player = { coins: 300, units: {}, wave: 1, deck: [], wins: 0, losses: 0, kills: 0, lastFree: 0 };
+let player = { coins: 300, units: {}, wave: 1, deck: [], wins: 0, losses: 0, kills: 0, lastFree: 0, streak: 0, history: [] };
 Object.keys(UNIT_DB).forEach(k => player.units[k] = { l: 1, c: 0 });
 
 let game = {
-    active: false, paused: false, over: false, ctx: null, cvs: null, w: 0, h: 0, camX: 0,
+    active: false, paused: false, over: false, phase: "fight", countT: 0, ctx: null, cvs: null, w: 0, h: 0, camX: 0,
     elixir: 5, enemyElixir: 5, time: 0, timeLeft: CFG.matchTime, kills: 0, enemyKills: 0,
     lastT: 0, shake: 0, selected: null, coinsEarned: 0,
+    lastKillT: -99, killStreak: 0, dmgStats: {}, warnedP: false, warnedE: false,
+    suddenAnn: false, overAnn: false, enemyName: "", enemyArch: null,
+    place: { x: 0, y: 0, ok: false, inZone: false },
     ents: [], projs: [], particles: [], floaters: [],
     towers: {
         p:{x:90,  hp:CFG.towerHP, max:CFG.towerHP, rng:300, dmg:38, cool:0, atkSpd:1.1, isTower:true, isP:true},
@@ -360,12 +430,39 @@ function load(){
             if(typeof d.coins==="number") player.coins = d.coins;
             player.wave = d.wave || 1;
             player.wins = d.wins||0; player.losses=d.losses||0; player.kills=d.kills||0;
+            player.streak = d.streak||0; player.history = Array.isArray(d.history)?d.history.slice(0,5):[];
             player.lastFree = d.lastFree||0;
             if(Array.isArray(d.deck)) player.deck = d.deck.filter(k=>UNIT_DB[k]);
             Object.keys(d.units||{}).forEach(k => { if(player.units[k]) player.units[k] = d.units[k]; });
         }
     }catch(e){}
     applyMuteIcon();
+}
+
+/* ---------- DUELL-ANKÜNDIGUNGEN ---------- */
+function announce(big, sub="", ms=1400){
+    const a=document.getElementById('announce'); if(!a) return;
+    document.getElementById('announce-big').innerText=big;
+    document.getElementById('announce-sub').innerText=sub;
+    a.classList.add('show'); clearTimeout(a._h);
+    a._h=setTimeout(()=>a.classList.remove('show'), ms);
+}
+function killfeed(html){
+    const kf=document.getElementById('killfeed'); if(!kf) return;
+    const el=document.createElement('div'); el.className='kf-item'; el.innerHTML=html;
+    kf.prepend(el);
+    while(kf.children.length>4) kf.lastChild.remove();
+    setTimeout(()=>{ el.style.opacity=0; el.style.transition=".5s"; setTimeout(()=>el.remove(),500); }, 3500);
+}
+function sendEmote(e){
+    if(!game.active || game.over) return;
+    addFloater(game.towers.p.x, game.h*0.35, e, "#fff");
+    safeClone(AUDIO.spawn);
+    setTimeout(()=>{
+        if(!game.active || game.over) return;
+        const replies=["😂","😡","👍","🔥","💀","🤡"];
+        addFloater(game.towers.e.x, game.h*0.35, replies[Math.floor(Math.random()*replies.length)], "#fff");
+    }, 900+Math.random()*900);
 }
 
 /* ---------- MENU ---------- */
@@ -378,8 +475,14 @@ function renderMenu(){
     document.getElementById('coin-count').innerText = Math.floor(player.coins);
     document.getElementById('stat-wave').innerText = player.wave;
     document.getElementById('stat-wins').innerText = player.wins;
+    document.getElementById('stat-streak').innerText = "🔥"+(player.streak||0);
     document.getElementById('stat-kills').innerText = player.kills;
     document.getElementById('army-power').innerText = "⚡ Power " + armyPower();
+    const hr=document.getElementById('hist-rows');
+    if(hr){
+        if(!player.history.length) hr.innerHTML='<span style="color:#666">Noch keine Duelle – starte dein erstes!</span>';
+        else hr.innerHTML = player.history.map(h=>`<div class="hist-row"><span>${h.win?"🏆":"💀"} Welle ${h.wave} vs ${h.boss||"Gegner"}</span><span>${h.kills}:${h.ek} · +${h.reward}🪙</span></div>`).join('');
+    }
     const fb=document.getElementById('free-btn');
     const wait = 60 - Math.floor((Date.now()-player.lastFree)/1000);
     if(wait>0){ fb.disabled=true; fb.innerText=`🎁 Gratis in ${wait}s`; } else { fb.disabled=false; fb.innerText="🎁 Gratis +40 🪙 abholen"; }
@@ -472,7 +575,7 @@ function merge(k){
 function resetSave(){
     if(!confirm("Wirklich alles zurücksetzen?")) return;
     localStorage.removeItem(CFG.saveKey);
-    player = { coins: 300, units: {}, wave: 1, deck: [], wins: 0, losses: 0, kills: 0, lastFree: 0 };
+    player = { coins: 300, units: {}, wave: 1, deck: [], wins: 0, losses: 0, kills: 0, lastFree: 0, streak: 0, history: [] };
     Object.keys(UNIT_DB).forEach(k => player.units[k] = { l: 1, c: 0 });
     save(); renderMenu(); toast("Neustart! Viel Glück 🍀");
 }
@@ -494,19 +597,32 @@ function startGame(){
     document.getElementById('menu-screen').classList.remove('active');
     document.getElementById('game-screen').classList.add('active');
     document.getElementById('end-overlay').classList.remove('show');
+    document.getElementById('killfeed').innerHTML='';
     game.cvs=document.getElementById('gameCanvas'); game.ctx=game.cvs.getContext('2d'); resize();
-    game.elixir=5; game.enemyElixir=4; game.ents=[]; game.projs=[]; game.particles=[]; game.floaters=[];
+    game.elixir=5; game.enemyElixir=5; game.ents=[]; game.projs=[]; game.particles=[]; game.floaters=[];
     game.camX=0; game.time=0; game.timeLeft=CFG.matchTime; game.kills=0; game.enemyKills=0;
     game.paused=false; game.over=false; game.selected=null; game.coinsEarned=0;
+    game.lastKillT=-99; game.killStreak=0; game.dmgStats={}; game.warnedP=false; game.warnedE=false;
+    game.suddenAnn=false; game.overAnn=false; game._aiT=0; game._comboT=0; game._sudT=0;
+    game.phase="countdown"; game.countT=3.0;
     game.towers.p.hp=game.towers.p.max=CFG.towerHP;
     const eHP = Math.round(CFG.towerHP * (1 + (player.wave-1)*0.08));
     game.towers.e.hp=game.towers.e.max=eHP;
     game.towers.e.dmg = 38 + player.wave*2;
     game.battleDeck=[...player.deck];
-    // Gegner-Deck: wellenabhängig, immer 5 Karten
-    const keys=Object.keys(UNIT_DB);
-    const pool=[...keys].sort(()=>Math.random()-0.5);
-    game.enemyDeck = pool.slice(0,CFG.deckSize);
+    // Gegner-Archetyp rotiert pro Welle
+    game.enemyArch = ARCHETYPES[(player.wave-1) % ARCHETYPES.length];
+    game.enemyDeck = [...game.enemyArch.deck];
+    game.enemyName = BOSS_NAMES[(player.wave-1) % BOSS_NAMES.length];
+    document.getElementById('enemy-name').innerText = game.enemyName.split(" ")[0].toUpperCase().slice(0,8);
+    document.getElementById('arch-label').innerText = game.enemyArch.name;
+    document.getElementById('vs-boss').innerText = game.enemyName;
+    document.getElementById('vs-arch').innerText = game.enemyArch.name + " · Welle " + player.wave;
+    document.getElementById('vs-foe-name').innerText = "GEGNER";
+    document.getElementById('vs-me').innerText = game.battleDeck.map(k=>UNIT_DB[k].icon).join("");
+    document.getElementById('vs-foe').innerText = game.enemyDeck.map(k=>UNIT_DB[k].icon).join("");
+    document.getElementById('vs-overlay').classList.add('show');
+    document.getElementById('vs-count').innerText = "3";
     safePlay(AUDIO.bgm);
     buildDeck(); game.active=true; game.lastT=performance.now();
     updateHint();
@@ -524,7 +640,7 @@ function buildDeck(){
     });
 }
 function selectCard(k){
-    if(game.over || game.paused) return;
+    if(game.over || game.paused || game.phase!=="fight") return;
     if(game.selected===k){ game.selected=null; }
     else {
         if(game.elixir < UNIT_DB[k].cost){ toast(`Brauche ${UNIT_DB[k].cost} 💧!`); return; }
@@ -561,18 +677,23 @@ function spawn(k, isP=true, lvl=null, atX=null, atY=null){
     safeClone(AUDIO.spawn);
     return true;
 }
-// Tap-to-deploy: nur eigene Hälfte
-function canvasTap(clientX, clientY){
-    if(!game.active || game.over || game.paused || !game.selected) return;
+// Tap-to-deploy: nur eigene Hälfte + Ghost-Vorschau
+function trackPlace(clientX, clientY){
+    if(!game.cvs) return;
     const rect = game.cvs.getBoundingClientRect();
     const sx = clientX - rect.left, sy = clientY - rect.top;
     const wx = sx + game.camX;
     const mid = (game.towers.p.x + game.towers.e.x)/2;
     const band = battleY(game.h);
-    if(wx > mid){ toast("Nur auf deine Hälfte (links)! ⬅️"); return; }
-    if(wx < game.towers.p.x - 20){ toast("Zu nah an der Basis!"); return; }
-    const wy = Math.max(band.top, Math.min(band.bot, sy));
-    spawn(game.selected, true, null, wx, wy);
+    game.place.x = wx; game.place.y = Math.max(band.top, Math.min(band.bot, sy));
+    game.place.inZone = wx <= mid && wx >= game.towers.p.x - 20;
+    game.place.ok = !!game.selected && game.place.inZone;
+}
+function canvasTap(clientX, clientY){
+    if(!game.active || game.over || game.paused || game.phase!=="fight" || !game.selected) return;
+    trackPlace(clientX, clientY);
+    if(!game.place.inZone){ toast("Nur auf deine Hälfte (links)! ⬅️"); return; }
+    spawn(game.selected, true, null, game.place.x, game.place.y);
 }
 
 class Ent {
@@ -607,9 +728,9 @@ class Ent {
             if(this.cool <= 0){
                 this.cool = this.atkDelay; this.atkFlash = 1;
                 if(this.proj){
-                    game.projs.push({x:this.x+facing*20, y:this.y-38, p:this.proj, d:this.dmg, fromP:this.isP, target:(target.isTower?null:target), tx:target.x, ty:(target.isTower?game.h*0.5:target.y-30), dead:false, towerRef:(target.isTower?target:null)});
+                    game.projs.push({x:this.x+facing*20, y:this.y-38, p:this.proj, d:this.dmg, fromP:this.isP, atkKey:this.k, target:(target.isTower?null:target), tx:target.x, ty:(target.isTower?game.h*0.5:target.y-30), dead:false, towerRef:(target.isTower?target:null)});
                 } else {
-                    dealDamage(target, this.dmg, this.isP, this.x, this.y-30);
+                    dealDamage(target, this.dmg, this.isP, this.x, this.y-30, this.k);
                 }
             }
         } else {
@@ -651,19 +772,48 @@ class Ent {
     }
 }
 
-function dealDamage(target, dmg, fromP, hx, hy){
-    if(target.hp<=0) return;
+function dealDamage(target, dmg, fromP, hx, hy, atkKey=null){
+    if(!target || target.hp<=0 || game.over) return;
     const isTower = !!target.isTower;
     target.hp -= dmg;
+    if(fromP && atkKey) game.dmgStats[atkKey]=(game.dmgStats[atkKey]||0)+dmg;
     addFloater(target.x + (Math.random()*30-15), (isTower?game.h*0.5:target.y-55), "-"+Math.round(dmg), fromP?"#69f0ae":"#ff8a65");
     spawnHit(hx, hy, fromP?"#c6ff00":"#ff5252", isTower?12:7);
     safeClone(AUDIO.hit);
-    if(target.hp<=0 && !isTower){
-        spawnDeath(target.x, target.y, target.isP);
-        addFloater(target.x, target.y-70, "+1 💧", "#d633ff");
-        if(fromP){ game.elixir=Math.min(CFG.elixirMax, game.elixir+1); game.kills++; player.kills++; }
-        else { game.enemyElixir=Math.min(CFG.elixirMax, game.enemyElixir+1); game.enemyKills++; }
+    // Splash (Bomber / Pyro / Don): Flächenschaden
+    if(atkKey && SPLASH_KEYS[atkKey] && !isTower){
+        const sp=SPLASH_KEYS[atkKey];
+        game.ents.forEach(e=>{
+            if(e===target || e.isP===fromP || e.hp<=0) return;
+            if(Math.hypot(e.x-target.x, e.y-target.y) < sp.r){
+                e.hp -= dmg*sp.f;
+                if(e.hp<=0) killUnit(e, fromP);
+            }
+        });
     }
+    if(target.hp<=0 && !isTower) killUnit(target, fromP);
+    // Turm-Warnung
+    if(isTower){
+        const pct = target.hp/target.max;
+        if(target.isP && !game.warnedP && pct<0.3 && pct>0){ game.warnedP=true; announce("⚠️ BASIS WACKELT!", "Verteidige deine linke Basis!", 1600); game.shake=14; }
+        if(!target.isP && !game.warnedE && pct<0.3 && pct>0){ game.warnedE=true; announce("🔥 FINISH HIM!", "Feind-Basis fast down – Push jetzt!", 1600); }
+    }
+}
+function killUnit(unit, fromP){
+    if(unit.hp>0) unit.hp=0;
+    spawnDeath(unit.x, unit.y, unit.isP);
+    addFloater(unit.x, unit.y-70, "+1 💧", "#d633ff");
+    killfeed(`${fromP?"🟢":"🔴"} ${UNIT_DB[unit.k].icon} ${UNIT_DB[unit.k].name} ${fromP?"zerstört":"fällt"}`);
+    if(fromP){
+        game.elixir=Math.min(CFG.elixirMax, game.elixir+1); game.kills++; player.kills++;
+        // Combo-System
+        if(game.time - game.lastKillT < 4) game.killStreak++; else game.killStreak=1;
+        game.lastKillT = game.time;
+        if(game.killStreak===2) announce("⚔️ DOUBLE KILL!", "+1 Elixier pro Kill", 1200);
+        else if(game.killStreak===3) announce("🔥 TRIPLE KILL!", "Du rollst!", 1200);
+        else if(game.killStreak>=4) announce("💀 RAMPAGE x"+game.killStreak+"!", "Unaufhaltsam!", 1400);
+    }
+    else { game.enemyElixir=Math.min(CFG.elixirMax, game.enemyElixir+1); game.enemyKills++; game.killStreak=0; }
 }
 
 function updateTowers(dt){
@@ -685,35 +835,86 @@ function updateTowers(dt){
     });
 }
 
-// Gegner-KI mit eigenem Elixier
+// Gegner-KI: Archetyp-Taktik mit Konter + Combo-Push + Sparphase
 function updateEnemyAI(dt){
-    const waveBonus = Math.min(0.5, player.wave*0.04);
+    const waveBonus = Math.min(0.6, player.wave*0.05);
     const mult = (game.time > CFG.overtimeAt ? 2 : 1) * (1 + waveBonus);
     game.enemyElixir = Math.min(CFG.elixirMax, game.enemyElixir + CFG.regen*mult*dt);
-    // Notfall-Verteidigung: Gegner nahe eigenem Turm?
-    const threat = game.ents.some(e=>e.isP && e.hp>0 && (game.towers.e.x - e.x) < 320);
+    if(game.phase!=="fight") return;
+    if(game.time < 6) return; // faire Aufbauphase: kein Instant-Rush
+    const myThreats = game.ents.filter(e=>e.isP && e.hp>0);
+    const closeThreat = myThreats.find(e=>(game.towers.e.x - e.x) < 330);
+    const midThreat = myThreats.find(e=>(game.towers.e.x - e.x) < 520);
     game._aiT = (game._aiT||0) + dt;
-    if(game._aiT < (threat?0.7:1.4)) return;
+    const hasComboReady = game.enemyElixir >= 8;
+    game._comboT = (game._comboT||0) + dt;
+    // Doppel-Push wenn voll: Tank vorne + Support hinten
+    if(hasComboReady && game._comboT > 6 && !closeThreat && Math.random()<0.5){
+        game._comboT = 0; game._aiT = 0;
+        const sorted=[...game.enemyDeck].sort((a,b)=>UNIT_DB[b].hp-UNIT_DB[a].hp);
+        const tank = sorted.find(k=>UNIT_DB[k].cost<=game.enemyElixir-3) || sorted[0];
+        const band = battleY(game.h);
+        const y = band.top + Math.random()*(band.bot-band.top);
+        if(spawn(tank, false, null, game.towers.e.x-330-Math.random()*80, y)){
+            const sup = game.enemyDeck.find(k=>k!==tank && UNIT_DB[k].rng>150 && UNIT_DB[k].cost<=game.enemyElixir);
+            if(sup) setTimeout(()=>{ if(game.active&&!game.over&&game.phase==="fight") spawn(sup, false, null, game.towers.e.x-140, y+(Math.random()*60-30)); }, 1200);
+            killfeed(`🔴 ${game.enemyName}: Kombo-Push!`);
+        }
+        return;
+    }
+    if(game._aiT < (closeThreat?0.6:(midThreat?1.0:1.6))) return;
     game._aiT = 0;
     const afford = game.enemyDeck.filter(k=>UNIT_DB[k].cost <= game.enemyElixir);
     if(!afford.length) return;
-    // billig verteidigen bei Bedrohung, sonst zufällig/teuer angreifen
-    afford.sort((a,b)=>UNIT_DB[a].cost-UNIT_DB[b].cost);
     let pick;
-    if(threat) pick = afford[Math.floor(Math.random()*Math.min(3,afford.length))];
-    else { if(Math.random()<0.35) return; pick = afford[Math.floor(Math.random()*afford.length)]; }
-    const band = battleY(game.h);
-    const pCount = game.ents.filter(e=>e.isP&&e.hp>0).length;
+    if(closeThreat){
+        // Konter: billige schnelle/hohe-DPS gegen Bedrohung, Spawn direkt vor Bedrohung
+        const sorted=[...afford].sort((a,b)=>(UNIT_DB[b].dmg*UNIT_DB[b].atkSpd/UNIT_DB[b].cost)-(UNIT_DB[a].dmg*UNIT_DB[a].atkSpd/UNIT_DB[a].cost));
+        pick = sorted[Math.floor(Math.random()*Math.min(2,sorted.length))];
+        const band = battleY(game.h);
+        spawn(pick, false, null, Math.max(game.towers.p.x+100, closeThreat.x+90+Math.random()*60), Math.max(band.top,Math.min(band.bot, closeThreat.y+(Math.random()*70-35))));
+        return;
+    }
+    if(game.enemyElixir < 5 && Math.random()<0.5) return; // Elixier sparen statt blind spammen
+    afford.sort((a,b)=>UNIT_DB[a].cost-UNIT_DB[b].cost);
+    pick = afford[Math.floor(Math.random()*afford.length)];
+    const band2 = battleY(game.h);
     const backX = game.towers.e.x - 120 - Math.random()*180;
     const frontX = game.towers.e.x - 320 - Math.random()*120;
-    const x = (threat || pCount>2) ? backX : frontX;
-    spawn(pick, false, null, x, band.top + Math.random()*(band.bot-band.top));
+    const x = (myThreats.length>2) ? backX : frontX;
+    spawn(pick, false, null, x, band2.top + Math.random()*(band2.bot-band2.top));
 }
 
 function update(dt){
+    // Countdown-Phase: nur Timer runterzählen
+    if(game.phase==="countdown"){
+        game.countT -= dt;
+        const n = Math.ceil(game.countT);
+        const el=document.getElementById('vs-count');
+        if(el) el.innerText = game.countT<=0.6 ? "LOS! 🔥" : String(Math.max(1,n));
+        if(game.countT<=0){
+            game.phase="fight";
+            document.getElementById('vs-overlay').classList.remove('show');
+            announce("⚔️ KAMPF!", game.enemyName + " – " + game.enemyArch.name, 1500);
+        }
+        return;
+    }
     game.time += dt;
     game.timeLeft = Math.max(0, CFG.matchTime - game.time);
     const over = game.time > CFG.overtimeAt;
+    const sudden = game.time > CFG.suddenAt;
+    if(over && !game.overAnn){ game.overAnn=true; announce("⚡ DOPPEL-ELIXIER!", "Beide Seiten laden 2x so schnell", 1600); }
+    if(sudden && !game.suddenAnn){ game.suddenAnn=true; announce("💀 SUDDEN DEATH!", "Türme verlieren Leben – Finish jetzt!", 1800); killfeed("💀 Sudden Death: Türme bluten!"); }
+    // Sudden Death: Türme bluten 25 HP/s
+    if(sudden){
+        game._sudT=(game._sudT||0)+dt;
+        if(game._sudT>=1){
+            game._sudT=0;
+            game.towers.p.hp-=25; game.towers.e.hp-=25;
+            addFloater(game.towers.p.x, game.h*0.4, "-25", "#f44336");
+            addFloater(game.towers.e.x, game.h*0.4, "-25", "#f44336");
+        }
+    }
     const mult = over ? 2 : 1;
     if(game.elixir < CFG.elixirMax) game.elixir = Math.min(CFG.elixirMax, game.elixir + CFG.regen*mult*dt);
     updateEnemyAI(dt);
@@ -731,8 +932,8 @@ function update(dt){
         const dx=tx-p.x, dy=ty-p.y, dist=Math.hypot(dx,dy);
         if(dist < 18){
             p.dead=true;
-            if(p.target && p.target.hp>0) dealDamage(p.target, p.d, p.fromP, p.x, p.y);
-            else if(p.towerRef && p.towerRef.hp>0) dealDamage(p.towerRef, p.d, p.fromP, p.x, p.y);
+            if(p.target && p.target.hp>0) dealDamage(p.target, p.d, p.fromP, p.x, p.y, p.atkKey||null);
+            else if(p.towerRef && p.towerRef.hp>0) dealDamage(p.towerRef, p.d, p.fromP, p.x, p.y, p.atkKey||null);
         } else { const s=750*dt; p.x+=(dx/dist)*s; p.y+=(dy/dist)*s; }
     });
     game.projs = game.projs.filter(p => !p.dead);
@@ -752,15 +953,17 @@ function update(dt){
     // HUD
     document.getElementById('elixir-txt').innerText = Math.floor(game.elixir);
     document.getElementById('elixir-bar').style.width = (game.elixir/CFG.elixirMax)*100+"%";
+    document.getElementById('elixir-e-bar').style.width = (game.enemyElixir/CFG.elixirMax)*100+"%";
     document.getElementById('hp-p').style.width = Math.max(0,(game.towers.p.hp/game.towers.p.max)*100)+"%";
     document.getElementById('hp-e').style.width = Math.max(0,(game.towers.e.hp/game.towers.e.max)*100)+"%";
     document.getElementById('hp-p-num').innerText = Math.max(0,Math.ceil(game.towers.p.hp));
     document.getElementById('hp-e-num').innerText = Math.max(0,Math.ceil(game.towers.e.hp));
-    document.getElementById('wave-display').innerText = "WELLE " + player.wave + (over?" ⚡x2":"");
+    document.getElementById('wave-display').innerText = "WELLE " + player.wave + (sudden?" 💀":(over?" ⚡x2":""));
     const mm=Math.floor(game.timeLeft/60), ss=Math.floor(game.timeLeft%60);
     const td=document.getElementById('timer-display');
-    td.innerText = `⏱ ${mm}:${String(ss).padStart(2,'0')}`;
-    td.classList.toggle('overtime', over && game.timeLeft>0);
+    td.innerText = sudden ? `💀 ${mm}:${String(ss).padStart(2,'0')}` : `⏱ ${mm}:${String(ss).padStart(2,'0')}`;
+    td.classList.toggle('overtime', over && !sudden && game.timeLeft>0);
+    td.classList.toggle('sudden', sudden && game.timeLeft>0);
     document.getElementById('kill-txt').innerText = `💀 ${game.kills} : ${game.enemyKills}`;
     game.battleDeck.forEach(k => {
         const card=document.getElementById('card-'+k);
@@ -773,8 +976,9 @@ function update(dt){
 
     if(game.towers.p.hp<=0 || game.towers.e.hp<=0) endGame(game.towers.e.hp<=0 && game.towers.p.hp>0);
     else if(game.timeLeft<=0){
-        if(game.towers.e.hp !== game.towers.p.hp) endGame(game.towers.e.hp < game.towers.p.hp);
-        else endGame(false, true); // Gleichstand = Niederlage (knapp)
+        const pp = game.towers.p.hp/game.towers.p.max, ee = game.towers.e.hp/game.towers.e.max;
+        if(Math.abs(pp-ee) < 0.005) endGame(false, true); // echtes Unentschieden
+        else endGame(ee < pp);
     }
 }
 
@@ -788,11 +992,12 @@ function draw(){
     if(imgOK(IMAGES.bg)) ctx.drawImage(IMAGES.bg,0,0,CFG.mapW,game.h);
     else { const g=ctx.createLinearGradient(0,0,0,game.h); g.addColorStop(0,"#1b5e20"); g.addColorStop(1,"#0d3311"); ctx.fillStyle=g; ctx.fillRect(0,0,CFG.mapW,game.h); }
     const gy=game.h*0.55, band=battleY(game.h);
-    // Lane-Markierung + eigene Hälfte
+    // Lane-Markierung + eigene Hälfte (pulsiert bei Auswahl)
     const mid=(game.towers.p.x+game.towers.e.x)/2;
-    ctx.fillStyle="rgba(76,175,80,.10)"; ctx.fillRect(0,band.top-20,mid,band.bot-band.top+40);
+    const sel = !!game.selected && game.phase==="fight";
+    ctx.fillStyle= sel ? "rgba(76,175,80,.20)" : "rgba(76,175,80,.10)"; ctx.fillRect(0,band.top-20,mid,band.bot-band.top+40);
     ctx.fillStyle="rgba(244,67,54,.08)"; ctx.fillRect(mid,band.top-20,CFG.mapW-mid,band.bot-band.top+40);
-    ctx.strokeStyle="rgba(255,255,255,.35)"; ctx.setLineDash([10,8]); ctx.lineWidth=2;
+    ctx.strokeStyle= sel ? "rgba(255,235,59,.8)" : "rgba(255,255,255,.35)"; ctx.setLineDash([10,8]); ctx.lineWidth=sel?3:2;
     ctx.beginPath(); ctx.moveTo(mid,band.top-20); ctx.lineTo(mid,band.bot+20); ctx.stroke(); ctx.setLineDash([]);
     ctx.strokeStyle="rgba(255,255,255,.15)";
     [band.top, gy, band.bot].forEach(y=>{ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CFG.mapW,y); ctx.stroke(); });
@@ -802,11 +1007,31 @@ function draw(){
     game.ents.sort((a,b)=>a.y-b.y).forEach(e=>e.draw(ctx));
     game.projs.forEach(p=>{ ctx.font="22px serif"; ctx.textAlign="center"; ctx.fillText(p.p,p.x,p.y+6); });
     game.particles.forEach(p=>p.draw(ctx));
+    // Placement-Ghost: Einheit + Reichweite an Fingerposition
+    if(game.selected && game.phase==="fight"){
+        const k=game.selected, d=UNIT_DB[k];
+        const gx=game.place.x||0, gy2=game.place.y||0;
+        if(gx>0){
+            ctx.globalAlpha=0.55;
+            if(imgOK(IMAGES[k])) ctx.drawImage(IMAGES[k], gx-31, gy2-62, 62, 62);
+            else { ctx.font="40px serif"; ctx.textAlign="center"; ctx.fillText(d.icon, gx, gy2-12); }
+            ctx.globalAlpha=0.35;
+            ctx.strokeStyle=game.place.inZone?"#ffeb3b":"#f44336"; ctx.lineWidth=2;
+            ctx.beginPath(); ctx.arc(gx, gy2-30, d.rng*0.5, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha=1;
+        }
+    }
     ctx.font="bold 15px sans-serif"; ctx.textAlign="center";
     game.floaters.forEach(f=>{ ctx.globalAlpha=Math.min(1,f.life*1.5); ctx.fillStyle=f.color; ctx.strokeStyle="rgba(0,0,0,.8)"; ctx.lineWidth=3; ctx.strokeText(f.txt,f.x,f.y); ctx.fillText(f.txt,f.x,f.y); ctx.globalAlpha=1; });
     ctx.restore();
+    // Sudden-Death-Vignette
+    if(game.time > CFG.suddenAt && !game.over){
+        const g2=ctx.createRadialGradient(game.w/2,game.h/2,game.h*0.3,game.w/2,game.h/2,game.h*0.75);
+        g2.addColorStop(0,"rgba(0,0,0,0)"); g2.addColorStop(1,"rgba(198,40,40,.35)");
+        ctx.fillStyle=g2; ctx.fillRect(0,0,game.w,game.h);
+    }
     // Auswahl-Ring am Finger? Hinweis-Pfeil
-    if(game.selected){
+    if(game.selected && game.phase==="fight"){
         ctx.fillStyle="rgba(255,235,59,.9)"; ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
         ctx.fillText("⬇ TIPPE AUFS FELD ⬇", game.w/2, 92);
     }
@@ -846,24 +1071,35 @@ function endGame(win, draw=false){
     if(win) safePlay(AUDIO.victory);
 }
 function showEnd(win, draw=false){
-    let reward=0;
-    if(win){ reward = 150 + player.wave*25 + game.kills*5; player.coins+=reward; player.wave++; player.wins++; game.coinsEarned=reward; }
-    else { reward = 25 + game.kills*5; player.coins+=reward; player.losses++; game.coinsEarned=reward; }
+    let reward=0, mvp="-", mvpDmg=0;
+    Object.keys(game.dmgStats).forEach(k=>{ if(game.dmgStats[k]>mvpDmg){ mvpDmg=game.dmgStats[k]; mvp=k; } });
+    const mvpTxt = mvp==="-" ? "–" : `${UNIT_DB[mvp].icon} ${UNIT_DB[mvp].name} (${Math.round(mvpDmg)})`;
+    if(win){
+        player.streak=(player.streak||0)+1;
+        const streakBonus=Math.min(100,(player.streak-1)*20);
+        reward = 150 + player.wave*25 + game.kills*5 + streakBonus;
+        player.coins+=reward; player.wave++; player.wins++; game.coinsEarned=reward;
+    }
+    else { reward = (draw?60:25) + game.kills*5; player.coins+=reward; if(!draw){player.losses++; player.streak=0;} game.coinsEarned=reward; }
+    player.history.unshift({ wave: win?player.wave-1:player.wave, win, kills: game.kills, ek: game.enemyKills, reward, boss: game.enemyName });
+    player.history = player.history.slice(0,5);
     save();
     document.getElementById('end-title').innerText = win ? "🏆 SIEG!" : (draw ? "🤝 UNENTSCHIEDEN" : "💀 NIEDERLAGE");
-    document.getElementById('end-sub').innerText = win ? `Welle ${player.wave-1} geschafft – weiter so!` : "Stärk dein Deck und versuch's erneut!";
+    document.getElementById('end-sub').innerText = win ? `${game.enemyName} besiegt – ${game.enemyArch.name}! Streak 🔥${player.streak}` : (draw ? "Beide Basen gleich stark – Sudden Death!" : `${game.enemyName} war stärker (${game.enemyArch.name}). Konter-Tipp: Fernkämpfer hinter Tanks!`);
     document.getElementById('end-stats').innerHTML =
         `💀 Kills: <b>${game.kills}</b> : ${game.enemyKills}<br>`+
         `🏰 Basis-HP: <b>${Math.max(0,Math.ceil(game.towers.p.hp))}</b> vs ${Math.max(0,Math.ceil(game.towers.e.hp))}<br>`+
+        `⭐ MVP: <b>${mvpTxt}</b><br>`+
         `⏱ Zeit: <b>${Math.floor(game.time/60)}:${String(Math.floor(game.time%60)).padStart(2,'0')}</b><br>`+
-        `🪙 Belohnung: <b style="color:var(--gold)">+${reward}</b>`;
+        `🪙 Belohnung: <b style="color:var(--gold)">+${reward}</b>${win&&player.streak>1?` <span style="font-size:11px">(inkl. Streak +${Math.min(100,(player.streak-1)*20)})</span>`:""}`;
     document.getElementById('end-overlay').classList.add('show');
 }
 function quitToMenu(fromEnd=false){
-    game.active=false; game.over=true; game.paused=false;
+    const wasLive = !game.over && document.getElementById('game-screen').classList.contains('active');
+    game.active=false; game.over=true; game.paused=false; game.phase="fight";
     try{ AUDIO.bgm.pause(); }catch(e){}
-    // Niederlage werten nur bei Aufgabe aus laufendem Spiel
-    if(!fromEnd && !game.over){ player.losses++; }
+    document.getElementById('vs-overlay').classList.remove('show');
+    if(!fromEnd && wasLive){ player.losses++; player.streak=0; toast("🏳️ Aufgegeben – als Niederlage gewertet"); }
     document.getElementById('end-overlay').classList.remove('show');
     document.getElementById('game-screen').classList.remove('active');
     document.getElementById('menu-screen').classList.add('active');
@@ -897,8 +1133,14 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', ()=>setTimeout(resize,200));
 document.addEventListener('pointerdown', (e)=>{
     if(!document.getElementById('game-screen').classList.contains('active')) return;
-    if(e.target.closest && (e.target.closest('.bot-hud') || e.target.closest('.top-hud') || e.target.closest('.end-overlay'))) return;
+    if(e.target.closest && (e.target.closest('.bot-hud') || e.target.closest('.top-hud') || e.target.closest('.end-overlay') || e.target.closest('#vs-overlay'))) return;
     canvasTap(e.clientX, e.clientY);
+});
+document.addEventListener('pointermove', (e)=>{
+    if(!game.active || game.over || !game.selected || game.phase!=="fight") return;
+    if(!document.getElementById('game-screen').classList.contains('active')) return;
+    if(e.target && e.target.closest && (e.target.closest('.bot-hud') || e.target.closest('.top-hud'))) return;
+    trackPlace(e.clientX, e.clientY);
 });
 window.onload = () => { load(); applyMuteIcon(); renderMenu(); };
 </script>
