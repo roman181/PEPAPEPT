@@ -133,6 +133,10 @@
         .g-cost { position: absolute; top: -6px; right: -6px; background: var(--accent); width: 24px; height: 24px; border-radius: 50%; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid white; font-weight: 900; z-index:2; }
         .game-card.selected .g-cost { background: var(--gold); color:#000; }
         .g-img { width: 46px; height: 46px; object-fit: contain; }
+        .g-role { font-size:9px; color:#aaa; font-weight:800; letter-spacing:.5px; }
+        .g-cd { position:absolute; left:0; right:0; bottom:0; height:0%; background:rgba(0,0,0,.72); border-radius:0 0 10px 10px; pointer-events:none; display:flex; align-items:flex-start; justify-content:center; overflow:hidden; }
+        .g-cd span { font-size:16px; font-weight:900; color:#fff; margin-top:32px; }
+        .game-card.on-cd { filter:saturate(.4) brightness(.75); }
         .deploy-hint { text-align:center; font-size:11px; color:var(--gold); min-height:16px; font-weight:700; }
 
         /* ===== Overlays / Modals ===== */
@@ -321,7 +325,8 @@
                 <b>🎯 Ziel:</b> Zerstöre die feindliche Basis (rechts), bevor deine fällt (links).<br><br>
                 <b>🃏 Karten legen:</b> Unten eine Karte antippen, dann auf <b>deine Spielfeldhälfte</b> tippen, um die Einheit dort zu spawnen. Position zählt – schütze deine Basis, flankiere den Gegner!<br><br>
                 <b>💧 Elixier:</b> Lädt automatisch auf (max. 10). Kills geben +1 Elixier Bonus. Ab 2:00 gibt es <b>doppeltes Elixier</b>, ab 2:30 <b>Sudden Death</b> (Türme bluten).<br><br>
-                <b>⚔️ Taktik:</b> Fernkämpfer (Sniper, Schütze) hinter Tanks (Heavy, Wache) stellen. Bomber & Pyro machen <b>Flächenschaden</b>. Gegner wechselt Taktik pro Welle (Rush / Panzer / Kontrolle) – spare Elixier für Konter!<br><br>
+                <b>⚔️ Taktik:</b> Fernkämpfer (🎯) kiten automatisch – halte Abstand! Tanks (🛡️) blocken, Heiler (💚) heilen Verletzte. Pyro zündet <b>Burn</b> 🔥, Hacker verlangsamt ❄️, Bomber explodiert beim Tod 💥, Fahrer mit Anlauf = <b>Charge x2</b> 💨, Spion mit <b>Backstab</b> 🗡️.<br><br>
+                <b>⏳ Cooldown:</b> Jede gelegte Karte sperrt kurz (2s + 1.6s pro 💧) – kein Spam, rotiere dein Deck!<br><br>
                 <b>📦 Shop & Upgrade:</b> Mit Coins Truhen kaufen → je 2 gleiche Karten = 1 Level-Up (+12% HP & Schaden).<br><br>
                 <b>⏱ Zeit:</b> Nach 3 Minuten gewinnt die Basis mit mehr HP. Unentschieden = Niederlage für beide? Nein – mehr HP gewinnt!
             </div>
@@ -346,6 +351,8 @@ const CFG = {
     overtimeAt: 120,
     suddenAt: 150,
     towerHP: 2000,
+    cdBase: 2.0,     // + pro Elixier-Kosten
+    cdPerCost: 1.6,  // Karten-Cooldown = base + cost*factor
 };
 
 // Duell-Archetypen: rotieren pro Welle für Abwechslung
@@ -359,26 +366,26 @@ const BOSS_NAMES = ["Don Pepe 🐧","General Kröte 🐢","Madame Patin 🐷","H
 const SPLASH_KEYS = { pinguin_bomber: { r: 95, f: 0.5 }, frosch_pyro: { r: 80, f: 0.35 }, pinguin_don: { r: 70, f: 0.3 } };
 
 const UNIT_DB = {
-    frosch_soldat:     { name: "Soldat",  cost: 2, hp: 230, dmg: 30,  rng: 70,  spd: 62, atkSpd: 1.2, proj: null, icon: "🐸" },
-    frosch_sniper:     { name: "Sniper",  cost: 4, hp: 130, dmg: 100, rng: 430, spd: 36, atkSpd: 0.75,proj: "🎯", icon: "🐸" },
-    frosch_pyro:       { name: "Pyro",    cost: 5, hp: 300, dmg: 55,  rng: 135, spd: 46, atkSpd: 1.0, proj: "🔥", icon: "🐸" },
-    frosch_sanitaeter: { name: "Sanitäter",cost:4, hp: 170, dmg: 14,  rng: 230, spd: 46, atkSpd: 1.4, proj: "➕", icon: "🐸" },
-    frosch_schwer:     { name: "Heavy",   cost: 6, hp: 680, dmg: 44,  rng: 85,  spd: 30, atkSpd: 0.7, proj: null, icon: "🐸" },
-    kroete_wache:      { name: "Wache",   cost: 3, hp: 470, dmg: 24,  rng: 60,  spd: 42, atkSpd: 1.1, proj: null, icon: "🐢" },
-    pinguin_bomber:    { name: "Bomber",  cost: 5, hp: 210, dmg: 140, rng: 165, spd: 56, atkSpd: 0.85,proj: "💣", icon: "🐧" },
-    pinguin_don:       { name: "Don",     cost: 8, hp: 880, dmg: 70,  rng: 80,  spd: 35, atkSpd: 0.6, proj: null, icon: "🐧" },
-    pinguin_fahrer:    { name: "Fahrer",  cost: 4, hp: 330, dmg: 36,  rng: 70,  spd: 105,atkSpd: 1.0, proj: null, icon: "🐧" },
-    pinguin_hacker:    { name: "Hacker",  cost: 5, hp: 160, dmg: 58,  rng: 320, spd: 46, atkSpd: 1.1, proj: "💻", icon: "🐧" },
-    pinguin_killer:    { name: "Killer",  cost: 5, hp: 250, dmg: 78,  rng: 250, spd: 62, atkSpd: 1.3, proj: "🗡️", icon: "🐧" },
-    pinguin_schlaeger: { name: "Schläger",cost: 3, hp: 390, dmg: 47,  rng: 58,  spd: 56, atkSpd: 0.9, proj: null, icon: "🐧" },
-    pinguin_schuetze:  { name: "Schütze", cost: 3, hp: 210, dmg: 40,  rng: 300, spd: 52, atkSpd: 1.0, proj: "🏹", icon: "🐧" },
-    schwein_doktor:    { name: "Doktor",  cost: 5, hp: 230, dmg: 20,  rng: 235, spd: 46, atkSpd: 1.3, proj: "💊", icon: "🐷" },
-    schwein_lady:      { name: "Lady",    cost: 4, hp: 280, dmg: 47,  rng: 195, spd: 56, atkSpd: 1.1, proj: "💄", icon: "🐷" },
-    schwein_patin:     { name: "Patin",   cost: 9, hp: 1150,dmg: 58,  rng: 115, spd: 32, atkSpd: 0.8, proj: "💍", icon: "🐷" },
-    schwein_revolver:  { name: "Outlaw",  cost: 3, hp: 190, dmg: 50,  rng: 235, spd: 66, atkSpd: 1.2, proj: "🔫", icon: "🐷" },
-    schwein_schlaeger: { name: "Brute",   cost: 4, hp: 570, dmg: 52,  rng: 68,  spd: 46, atkSpd: 0.8, proj: null, icon: "🐷" },
-    schwein_spion:     { name: "Spion",   cost: 5, hp: 180, dmg: 88,  rng: 115, spd: 82, atkSpd: 1.4, proj: "🕵️", icon: "🐷" },
-    schwein_vollstrecker:{ name:"Henker", cost: 7, hp: 780, dmg: 115, rng: 70,  spd: 40, atkSpd: 0.7, proj: null, icon: "🐷" },
+    frosch_soldat:     { name: "Soldat",  cost: 2, hp: 230, dmg: 30,  rng: 70,  spd: 62, atkSpd: 1.2, proj: null, icon: "🐸", role: "melee" },
+    frosch_sniper:     { name: "Sniper",  cost: 4, hp: 130, dmg: 100, rng: 430, spd: 36, atkSpd: 0.75,proj: "🎯", icon: "🐸", role: "ranged" },
+    frosch_pyro:       { name: "Pyro",    cost: 5, hp: 300, dmg: 55,  rng: 135, spd: 46, atkSpd: 1.0, proj: "🔥", icon: "🐸", role: "melee", burn: { dps: 16, dur: 3 } },
+    frosch_sanitaeter: { name: "Sanitäter",cost:4, hp: 170, dmg: 14,  rng: 230, spd: 46, atkSpd: 1.4, proj: "➕", icon: "🐸", role: "healer", heal: 45 },
+    frosch_schwer:     { name: "Heavy",   cost: 6, hp: 680, dmg: 44,  rng: 85,  spd: 30, atkSpd: 0.7, proj: null, icon: "🐸", role: "tank" },
+    kroete_wache:      { name: "Wache",   cost: 3, hp: 470, dmg: 24,  rng: 60,  spd: 42, atkSpd: 1.1, proj: null, icon: "🐢", role: "tank" },
+    pinguin_bomber:    { name: "Bomber",  cost: 5, hp: 210, dmg: 140, rng: 165, spd: 56, atkSpd: 0.85,proj: "💣", icon: "🐧", role: "ranged", deathBoom: { dmg: 130, r: 95 } },
+    pinguin_don:       { name: "Don",     cost: 8, hp: 880, dmg: 70,  rng: 80,  spd: 35, atkSpd: 0.6, proj: null, icon: "🐧", role: "tank" },
+    pinguin_fahrer:    { name: "Fahrer",  cost: 4, hp: 330, dmg: 36,  rng: 70,  spd: 105,atkSpd: 1.0, proj: null, icon: "🐧", role: "melee", charge: { range: 300, mult: 2.0 } },
+    pinguin_hacker:    { name: "Hacker",  cost: 5, hp: 160, dmg: 58,  rng: 320, spd: 46, atkSpd: 1.1, proj: "💻", icon: "🐧", role: "ranged", slow: { f: 0.55, dur: 2.0 } },
+    pinguin_killer:    { name: "Killer",  cost: 5, hp: 250, dmg: 78,  rng: 250, spd: 62, atkSpd: 1.3, proj: "🗡️", icon: "🐧", role: "ranged" },
+    pinguin_schlaeger: { name: "Schläger",cost: 3, hp: 390, dmg: 47,  rng: 58,  spd: 56, atkSpd: 0.9, proj: null, icon: "🐧", role: "melee" },
+    pinguin_schuetze:  { name: "Schütze", cost: 3, hp: 210, dmg: 40,  rng: 300, spd: 52, atkSpd: 1.0, proj: "🏹", icon: "🐧", role: "ranged" },
+    schwein_doktor:    { name: "Doktor",  cost: 5, hp: 230, dmg: 20,  rng: 235, spd: 46, atkSpd: 1.3, proj: "💊", icon: "🐷", role: "healer", heal: 60 },
+    schwein_lady:      { name: "Lady",    cost: 4, hp: 280, dmg: 47,  rng: 195, spd: 56, atkSpd: 1.1, proj: "💄", icon: "🐷", role: "ranged" },
+    schwein_patin:     { name: "Patin",   cost: 9, hp: 1150,dmg: 58,  rng: 115, spd: 32, atkSpd: 0.8, proj: "💍", icon: "🐷", role: "tank" },
+    schwein_revolver:  { name: "Outlaw",  cost: 3, hp: 190, dmg: 50,  rng: 235, spd: 66, atkSpd: 1.2, proj: "🔫", icon: "🐷", role: "ranged" },
+    schwein_schlaeger: { name: "Brute",   cost: 4, hp: 570, dmg: 52,  rng: 68,  spd: 46, atkSpd: 0.8, proj: null, icon: "🐷", role: "tank" },
+    schwein_spion:     { name: "Spion",   cost: 5, hp: 180, dmg: 88,  rng: 115, spd: 82, atkSpd: 1.4, proj: "🕵️", icon: "🐷", role: "melee", backstab: 1.6 },
+    schwein_vollstrecker:{ name:"Henker", cost: 7, hp: 780, dmg: 115, rng: 70,  spd: 40, atkSpd: 0.7, proj: null, icon: "🐷", role: "melee" },
 };
 
 const IMG_BASE = "https://raw.githubusercontent.com/roman181/Gangpepe/refs/heads/main/";
@@ -409,7 +416,7 @@ Object.keys(UNIT_DB).forEach(k => player.units[k] = { l: 1, c: 0 });
 let game = {
     active: false, paused: false, over: false, phase: "fight", countT: 0, ctx: null, cvs: null, w: 0, h: 0, camX: 0,
     elixir: 5, enemyElixir: 5, time: 0, timeLeft: CFG.matchTime, kills: 0, enemyKills: 0,
-    lastT: 0, shake: 0, selected: null, coinsEarned: 0,
+    lastT: 0, shake: 0, selected: null, coinsEarned: 0, cooldowns: {}, healStats: {},
     lastKillT: -99, killStreak: 0, dmgStats: {}, warnedP: false, warnedE: false,
     suddenAnn: false, overAnn: false, enemyName: "", enemyArch: null,
     place: { x: 0, y: 0, ok: false, inZone: false },
@@ -488,13 +495,15 @@ function renderMenu(){
     if(wait>0){ fb.disabled=true; fb.innerText=`🎁 Gratis in ${wait}s`; } else { fb.disabled=false; fb.innerText="🎁 Gratis +40 🪙 abholen"; }
 
     const list = document.getElementById('inv-list'); list.innerHTML = '';
+    const roleTag = { tank:"🛡️Tank", melee:"🗡️Nah", ranged:"🎯Fern", healer:"💚Heal" };
     Object.keys(UNIT_DB).forEach(k => {
         const u = player.units[k], d = UNIT_DB[k], inDeck = player.deck.includes(k);
+        const fx = d.heal?` · 💚${Math.round(d.heal*Math.pow(1.12,u.l-1))}`:(d.burn?" · 🔥Burn":"")+(d.slow?" · ❄️Slow":"")+(d.deathBoom?" · 💥Boom":"")+(d.charge?" · 💨Charge":"")+(d.backstab?" · 🗡️Stab":"");
         const row = document.createElement('div'); row.className = 'unit-row' + (inDeck?' in-deck':'');
         row.innerHTML =
             `<div class="unit-info"><img src="${IMAGES[k].src}" class="unit-img-ui" onerror="this.style.display='none'">`+
-            `<div><div style="font-weight:800;">${d.icon} ${d.name} <span style="color:var(--primary)">Lvl ${u.l}</span> ${inDeck?'📋':''}</div>`+
-            `<div class="unit-stats">❤️ <b>${Math.round(d.hp*Math.pow(1.12,u.l-1))}</b> · 🗡️ <b>${Math.round(d.dmg*Math.pow(1.12,u.l-1))}</b> · 💧 <b>${d.cost}</b> · 🎯 ${d.rng}<br>${u.c}/2 Karten</div></div></div>`+
+            `<div><div style="font-weight:800;">${d.icon} ${d.name} <span style="color:var(--primary)">Lvl ${u.l}</span> <span style="font-size:10px;color:#888">${roleTag[d.role]||""}</span> ${inDeck?'📋':''}</div>`+
+            `<div class="unit-stats">❤️ <b>${Math.round(d.hp*Math.pow(1.12,u.l-1))}</b> · 🗡️ <b>${Math.round(d.dmg*Math.pow(1.12,u.l-1))}</b> · 💧 <b>${d.cost}</b> · 🎯 ${d.rng}${fx}<br>${u.c}/2 Karten</div></div></div>`+
             `<div class="row-btns">${!inDeck?`<button class="add-to-deck" ${(player.deck.length>=CFG.deckSize||u.c<1)?'disabled':''} onclick="addToDeck('${k}')">+ Deck</button>`:''}`+
             `<button class="merge-btn" ${u.c<2?'disabled':''} onclick="merge('${k}')">UP</button></div>`;
         list.appendChild(row);
@@ -601,7 +610,7 @@ function startGame(){
     game.cvs=document.getElementById('gameCanvas'); game.ctx=game.cvs.getContext('2d'); resize();
     game.elixir=5; game.enemyElixir=5; game.ents=[]; game.projs=[]; game.particles=[]; game.floaters=[];
     game.camX=0; game.time=0; game.timeLeft=CFG.matchTime; game.kills=0; game.enemyKills=0;
-    game.paused=false; game.over=false; game.selected=null; game.coinsEarned=0;
+    game.paused=false; game.over=false; game.selected=null; game.coinsEarned=0; game.cooldowns={}; game.healStats={}; game.enemyCD={};
     game.lastKillT=-99; game.killStreak=0; game.dmgStats={}; game.warnedP=false; game.warnedE=false;
     game.suddenAnn=false; game.overAnn=false; game._aiT=0; game._comboT=0; game._sudT=0;
     game.phase="countdown"; game.countT=3.0;
@@ -629,18 +638,21 @@ function startGame(){
     requestAnimationFrame(loop);
 }
 function playAgain(){ startGame(); }
+function cardCooldown(k){ return CFG.cdBase + UNIT_DB[k].cost * CFG.cdPerCost; }
 function buildDeck(){
     const dock=document.getElementById('card-dock'); dock.innerHTML='';
+    const roleIcon = { tank:"🛡️", melee:"🗡️", ranged:"🎯", healer:"💚", support:"✨" };
     game.battleDeck.forEach(k=>{
         const d=UNIT_DB[k];
         const card=document.createElement('div'); card.className='game-card disabled'; card.id='card-'+k;
         card.onclick=()=>selectCard(k);
-        card.innerHTML=`<div class="g-cost">${d.cost}</div><img src="${IMAGES[k].src}" class="g-img" onerror="this.outerHTML='<div style=font-size:34px>${d.icon}</div>'"><div class="nm">${d.name}</div>`;
+        card.innerHTML=`<div class="g-cost">${d.cost}</div><img src="${IMAGES[k].src}" class="g-img" onerror="this.outerHTML='<div style=font-size:34px>${d.icon}</div>'"><div class="nm">${d.name}</div><div class="g-role">${roleIcon[d.role]||""} ${d.role==="healer"?"HEAL":d.role.toUpperCase()}</div><div class="g-cd" id="cd-${k}"><span></span></div>`;
         dock.appendChild(card);
     });
 }
 function selectCard(k){
     if(game.over || game.paused || game.phase!=="fight") return;
+    if((game.cooldowns[k]||0) > 0){ toast(`⏳ ${UNIT_DB[k].name} bereit in ${Math.ceil(game.cooldowns[k])}s`); return; }
     if(game.selected===k){ game.selected=null; }
     else {
         if(game.elixir < UNIT_DB[k].cost){ toast(`Brauche ${UNIT_DB[k].cost} 💧!`); return; }
@@ -660,7 +672,9 @@ function spawn(k, isP=true, lvl=null, atX=null, atY=null){
     const d=UNIT_DB[k];
     if(isP){
         if(game.elixir < d.cost) return false;
+        if((game.cooldowns[k]||0) > 0) return false;
         game.elixir -= d.cost;
+        game.cooldowns[k] = cardCooldown(k);
         lvl = lvl ?? player.units[k].l;
     } else {
         if(game.enemyElixir < d.cost) return false;
@@ -703,49 +717,134 @@ class Ent {
         const scale = Math.pow(1.12, lvl-1);
         this.max = d.hp * scale; this.hp = this.max;
         this.dmg = d.dmg * scale; this.rng = d.rng; this.spd = d.spd; this.proj = d.proj;
+        this.role = d.role || "melee";
+        this.healAmt = (d.heal||0) * scale;
         this.atkDelay = 1.0 / (d.atkSpd || 1.0); this.cool = 0.3;
         this.w = 62; this.h = 62; this.atkFlash = 0; this.t = Math.random()*10;
-        this.x = x; this.y = y;
+        this.x = x; this.y = y; this.spawnX = x;
+        this.movedDist = 0; this.chargeUsed = false; this.backstabUsed = false;
+        this.slowT = 0; this.slowF = 1; this.burnT = 0; this.burnDps = 0; this._burnTick = 0;
+    }
+    effSpd(){ return this.spd * (this.slowT>0 ? this.slowF : 1); }
+    nearestEnemy(maxDist=1e9){
+        let target=null, best=1e9;
+        for(const e of game.ents){
+            if(e.isP === this.isP || e.hp<=0) continue;
+            const dx=e.x-this.x, dy=(e.y-this.y)*1.4;
+            const dist=Math.sqrt(dx*dx+dy*dy);
+            // Tanks ziehen Aggro: leicht bevorzugt (20% näher gewertet)
+            const w = (e.role==="tank") ? dist*0.8 : dist;
+            if(dist <= this.rng && dist <= maxDist && w < best){ best=w; target=e; }
+        }
+        return target;
+    }
+    mostInjuredAlly(){
+        let best=null, lowest=1;
+        for(const e of game.ents){
+            if(e.isP !== this.isP || e===this || e.hp<=0) continue;
+            const frac = e.hp/e.max;
+            if(frac < 0.92 && frac < lowest){
+                const d = Math.hypot(e.x-this.x, e.y-this.y);
+                if(d <= this.rng+40){ lowest=frac; best=e; }
+            }
+        }
+        return best;
+    }
+    moveBy(dx, dy, dt){
+        // Separation in X+Y gegen Verbündete
+        for(const e of game.ents){
+            if(e===this || e.isP!==this.isP || e.hp<=0) continue;
+            const ox=this.x-e.x, oy=this.y-e.y;
+            const d=Math.hypot(ox,oy);
+            if(d<30 && d>0.1){ dx += (ox/d)*30*dt; dy += (oy/d)*30*dt; }
+        }
+        const band = battleY(game.h);
+        const nx = this.x + dx, ny = Math.max(band.top, Math.min(band.bot, this.y + dy));
+        if(this.isP && nx > game.towers.e.x - 45) return;
+        if(!this.isP && nx < game.towers.p.x + 45) return;
+        this.movedDist += Math.abs(dx);
+        this.x = nx; this.y = ny;
+    }
+    attack(target){
+        const d = UNIT_DB[this.k];
+        let dmg = this.dmg;
+        // Fahrer-Charge: erster Angriff nach langem Anlauf
+        if(d.charge && !this.chargeUsed && this.movedDist >= d.charge.range){ dmg *= d.charge.mult; this.chargeUsed=true; addFloater(this.x, this.y-80, "CHARGE! 💨", "#fff"); }
+        // Spion-Backstab: erster Angriff mit Bonus wenn Ziel abgelenkt (vollere HP = unvorbereitet)
+        if(d.backstab && !this.backstabUsed && target.hp !== undefined && !target.isTower && target.hp > target.max*0.7){ dmg *= d.backstab; this.backstabUsed=true; addFloater(target.x, target.y-70, "BACKSTAB! 🗡️", "#ffeb3b"); }
+        this.cool = this.atkDelay; this.atkFlash = 1;
+        const facing = target.x >= this.x ? 1 : -1;
+        // Heiler-Projektil ist Heilung, kein Schaden (wird separat behandelt)
+        if(this.proj){
+            game.projs.push({x:this.x+facing*20, y:this.y-38, p:this.proj, d:dmg, fromP:this.isP, atkKey:this.k, target:(target.isTower?null:target), tx:target.x, ty:(target.isTower?game.h*0.5:target.y-30), dead:false, towerRef:(target.isTower?target:null)});
+        } else {
+            dealDamage(target, dmg, this.isP, this.x, this.y-30, this.k);
+        }
     }
     update(dt){
         this.t += dt;
         if(this.atkFlash > 0) this.atkFlash -= dt * 5;
         if(this.cool > 0) this.cool -= dt;
-        let target = null, best = 1e9;
-        for(const e of game.ents){
-            if(e.isP === this.isP || e.hp<=0) continue;
-            const dx=e.x-this.x, dy=(e.y-this.y)*1.4;
-            const dist=Math.sqrt(dx*dx+dy*dy);
-            if(dist <= this.rng && dist < best){ best=dist; target=e; }
+        if(this.slowT > 0) this.slowT -= dt;
+        // Burn-DoT ticken
+        if(this.burnT > 0){
+            this.burnT -= dt; this._burnTick += dt;
+            this.hp -= this.burnDps * dt;
+            if(this._burnTick > 0.4){ this._burnTick=0; game.particles.push(new Particle(this.x+(Math.random()*20-10), this.y-40, "#ff9800", 3, 60)); }
+            if(this.hp<=0){ killUnit(this, !this.isP); return; }
         }
-        const enemyTw = this.isP ? game.towers.e : game.towers.p;
-        const dTw = Math.hypot(enemyTw.x-this.x, (game.h*0.55-this.y)*0.5);
-        if(!target && dTw <= enemyTw.rng + this.rng*0.4) target = enemyTw;
-        if(!target && Math.abs(enemyTw.x-this.x) < 55) target = enemyTw;
+        if(this.hp<=0) return;
 
-        if(target){
-            const facing = target.x >= this.x ? 1 : -1;
-            if(this.cool <= 0){
-                this.cool = this.atkDelay; this.atkFlash = 1;
-                if(this.proj){
-                    game.projs.push({x:this.x+facing*20, y:this.y-38, p:this.proj, d:this.dmg, fromP:this.isP, atkKey:this.k, target:(target.isTower?null:target), tx:target.x, ty:(target.isTower?game.h*0.5:target.y-30), dead:false, towerRef:(target.isTower?target:null)});
+        // ---- HEILER-LOGIK ----
+        if(this.role==="healer"){
+            const patient = this.mostInjuredAlly();
+            if(patient){
+                const d = Math.hypot(patient.x-this.x, patient.y-this.y);
+                if(d <= this.rng){
+                    if(this.cool<=0){
+                        this.cool=this.atkDelay; this.atkFlash=1;
+                        game.projs.push({x:this.x, y:this.y-38, p:this.proj||"💚", d:-this.healAmt, fromP:this.isP, atkKey:this.k, target:patient, tx:patient.x, ty:patient.y-30, dead:false, towerRef:null, isHeal:true});
+                    }
+                    return; // stehen bleiben & heilen
                 } else {
-                    dealDamage(target, this.dmg, this.isP, this.x, this.y-30, this.k);
+                    // zum verletzten Verbündeten laufen
+                    const dir = patient.x>this.x?1:-1;
+                    this.moveBy(dir*this.effSpd()*dt*0.9, (patient.y-this.y)*dt*2, dt);
+                    return;
                 }
             }
+            // kein Patient: schwacher Angriff oder stärkstem Ally folgen
+            const foe = this.nearestEnemy();
+            if(foe && this.cool<=0){ this.attack(foe); return; }
+            let buddy=null, bd=1e9;
+            for(const e of game.ents){ if(e.isP!==this.isP||e===this||e.hp<=0||e.role==="healer") continue; const dd=Math.abs(e.x-this.x); if(dd<bd){bd=dd;buddy=e;} }
+            if(buddy){ const dir=(this.isP?1:-1); const wantX=buddy.x-dir*70; this.moveBy(Math.sign(wantX-this.x)*this.effSpd()*dt*0.8, (buddy.y-this.y)*dt*1.5, dt); }
+            else this.moveBy((this.isP?1:-1)*this.effSpd()*dt*0.6, 0, dt);
+            return;
+        }
+
+        // ---- KAMPF-LOGIK mit Kiting ----
+        const target = this.nearestEnemy();
+        const enemyTw = this.isP ? game.towers.e : game.towers.p;
+        let twTarget = null;
+        const dTw = Math.hypot(enemyTw.x-this.x, (game.h*0.55-this.y)*0.5);
+        if(!target && dTw <= enemyTw.rng + this.rng*0.4) twTarget = enemyTw;
+        if(!target && !twTarget && Math.abs(enemyTw.x-this.x) < 55) twTarget = enemyTw;
+        const foe = target || twTarget;
+
+        if(foe){
+            const dist = foe.isTower ? Math.abs(foe.x-this.x) : Math.hypot(foe.x-this.x, foe.y-this.y);
+            // Ranged kitet: zu nah → zurückweichen
+            if(this.role==="ranged" && !foe.isTower && dist < this.rng*0.45){
+                const away = this.x < foe.x ? -1 : 1;
+                this.moveBy(away*this.effSpd()*dt, 0, dt);
+                if(this.cool<=0) this.attack(foe); // schießt trotzdem im Rückzug
+                return;
+            }
+            if(this.cool <= 0) this.attack(foe);
         } else {
             const dir = this.isP ? 1 : -1;
-            let move = this.spd * dt * dir;
-            // simple separation
-            for(const e of game.ents){
-                if(e===this || e.isP!==this.isP) continue;
-                if(Math.abs(e.x-this.x)<30 && Math.abs(e.y-this.y)<26){ move *= 0.25; break; }
-            }
-            // nicht durch Türme laufen
-            const nextX = this.x + move;
-            if(this.isP && nextX > game.towers.e.x - 45) return;
-            if(!this.isP && nextX < game.towers.p.x + 45) return;
-            this.x += move;
+            this.moveBy(dir*this.effSpd()*dt, Math.sin(this.t*1.3)*8*dt, dt);
         }
     }
     draw(ctx){
@@ -753,10 +852,14 @@ class Ent {
         // Schatten
         ctx.fillStyle="rgba(0,0,0,.45)";
         ctx.beginPath(); ctx.ellipse(this.x, this.y+4, 22, 7, 0, 0, Math.PI*2); ctx.fill();
-        // Team-Ring
-        ctx.strokeStyle = this.isP ? "#4caf50" : "#f44336";
-        ctx.lineWidth = 2.5;
+        // Team-Ring (Heiler grün-weiß, Slowed blau)
+        ctx.strokeStyle = this.role==="healer" ? "#69f0ae" : (this.isP ? "#4caf50" : "#f44336");
+        if(this.slowT>0) ctx.strokeStyle = "#4fc3f7";
+        ctx.lineWidth = this.role==="tank" ? 4 : 2.5;
         ctx.beginPath(); ctx.arc(this.x, this.y-30+bob, 30, 0, Math.PI*2); ctx.stroke();
+        if(this.burnT>0){ ctx.font="16px serif"; ctx.textAlign="center"; ctx.fillText("🔥", this.x+24, this.y-52+bob); }
+        if(this.slowT>0){ ctx.font="14px serif"; ctx.textAlign="center"; ctx.fillText("❄️", this.x-26, this.y-52+bob); }
+        if(this.role==="healer"){ ctx.font="13px serif"; ctx.textAlign="center"; ctx.fillText("✚", this.x, this.y-this.h-24+bob); }
         ctx.save(); ctx.translate(this.x, this.y+bob);
         if(!this.isP) ctx.scale(-1,1);
         if(this.atkFlash > 0.4){ ctx.shadowBlur=16; ctx.shadowColor=this.isP?"#4caf50":"#f44336"; }
@@ -772,6 +875,14 @@ class Ent {
     }
 }
 
+function healUnit(target, amount, fromP, atkKey){
+    if(!target || target.hp<=0 || target.hp>=target.max) return;
+    const real = Math.min(amount, target.max-target.hp);
+    target.hp += real;
+    addFloater(target.x+(Math.random()*20-10), target.y-60, "+"+Math.round(real)+" 💚", "#69f0ae");
+    for(let i=0;i<6;i++) game.particles.push(new Particle(target.x+(Math.random()*30-15), target.y-40, "#69f0ae", 3, 90));
+    if(fromP && atkKey) game.healStats[atkKey]=(game.healStats[atkKey]||0)+real;
+}
 function dealDamage(target, dmg, fromP, hx, hy, atkKey=null){
     if(!target || target.hp<=0 || game.over) return;
     const isTower = !!target.isTower;
@@ -780,6 +891,12 @@ function dealDamage(target, dmg, fromP, hx, hy, atkKey=null){
     addFloater(target.x + (Math.random()*30-15), (isTower?game.h*0.5:target.y-55), "-"+Math.round(dmg), fromP?"#69f0ae":"#ff8a65");
     spawnHit(hx, hy, fromP?"#c6ff00":"#ff5252", isTower?12:7);
     safeClone(AUDIO.hit);
+    // Status-Effekte vom Angreifer
+    if(atkKey && UNIT_DB[atkKey] && !isTower && target.hp>0){
+        const ud = UNIT_DB[atkKey];
+        if(ud.burn){ target.burnT = ud.burn.dur; target.burnDps = ud.burn.dps * (1+((game.ents.find(e=>e.k===atkKey)?.lvl||1)-1)*0.12); }
+        if(ud.slow){ target.slowT = ud.slow.dur; target.slowF = ud.slow.f; }
+    }
     // Splash (Bomber / Pyro / Don): Flächenschaden
     if(atkKey && SPLASH_KEYS[atkKey] && !isTower){
         const sp=SPLASH_KEYS[atkKey];
@@ -802,6 +919,23 @@ function dealDamage(target, dmg, fromP, hx, hy, atkKey=null){
 function killUnit(unit, fromP){
     if(unit.hp>0) unit.hp=0;
     spawnDeath(unit.x, unit.y, unit.isP);
+    // Bomber-Tod: Explosion mit Flächenschaden
+    const ud = UNIT_DB[unit.k];
+    if(ud && ud.deathBoom){
+        const bd = ud.deathBoom.dmg * Math.pow(1.12, unit.lvl-1);
+        game.particles.push(new Particle(unit.x, unit.y-30, "#ff9800", 8, 300));
+        for(let i=0;i<20;i++) game.particles.push(new Particle(unit.x, unit.y-30, i%2?"#ff9800":"#ff5722", 4, 280));
+        game.shake=Math.min(14, game.shake+6);
+        addFloater(unit.x, unit.y-90, "BOOM! 💥", "#ff9800");
+        game.ents.forEach(e=>{
+            if(e===unit || e.isP===unit.isP || e.hp<=0) return;
+            if(Math.hypot(e.x-unit.x, e.y-unit.y) < ud.deathBoom.r){
+                e.hp -= bd;
+                addFloater(e.x, e.y-55, "-"+Math.round(bd), "#ff9800");
+                if(e.hp<=0) killUnit(e, !unit.isP);
+            }
+        });
+    }
     addFloater(unit.x, unit.y-70, "+1 💧", "#d633ff");
     killfeed(`${fromP?"🟢":"🔴"} ${UNIT_DB[unit.k].icon} ${UNIT_DB[unit.k].name} ${fromP?"zerstört":"fällt"}`);
     if(fromP){
@@ -821,15 +955,18 @@ function updateTowers(dt){
         const tw = game.towers[side];
         tw.cool -= dt;
         if(tw.cool > 0) return;
-        let closest=null, minD=1e9;
+        // Smart-Targeting: niedrigste HP im Radius (Finisher), bei Gleichstand nächster
+        let pick=null, pickScore=1e9;
         game.ents.forEach(e => {
             if(e.isP === (side==='p') || e.hp<=0) return;
             const d = Math.hypot(e.x-tw.x, (e.y-game.h*0.55)*0.6);
-            if(d < tw.rng && d < minD){ minD=d; closest=e; }
+            if(d > tw.rng) return;
+            const score = (e.hp/e.max)*300 + d*0.4 - (e.role==="tank"?40:0);
+            if(score < pickScore){ pickScore=score; pick=e; }
         });
-        if(closest){
+        if(pick){
             tw.cool = 1.0/tw.atkSpd;
-            game.projs.push({x:tw.x, y:game.h*0.5, p:side==='p'?'🔰':'🔥', d:tw.dmg, fromP:(side==='p'), target:closest, tx:closest.x, ty:closest.y-30, dead:false, towerRef:null});
+            game.projs.push({x:tw.x, y:game.h*0.5, p:side==='p'?'🔰':'🔥', d:tw.dmg, fromP:(side==='p'), target:pick, tx:pick.x, ty:pick.y-30, dead:false, towerRef:null});
             for(let i=0;i<5;i++) game.particles.push(new Particle(tw.x, game.h*0.5, side==='p'?"#69f0ae":"#ff8a65", 3, 140));
         }
     });
@@ -840,6 +977,8 @@ function updateEnemyAI(dt){
     const waveBonus = Math.min(0.6, player.wave*0.05);
     const mult = (game.time > CFG.overtimeAt ? 2 : 1) * (1 + waveBonus);
     game.enemyElixir = Math.min(CFG.elixirMax, game.enemyElixir + CFG.regen*mult*dt);
+    game.enemyCD = game.enemyCD || {};
+    Object.keys(game.enemyCD).forEach(k=>{ game.enemyCD[k]=Math.max(0, game.enemyCD[k]-dt); });
     if(game.phase!=="fight") return;
     if(game.time < 6) return; // faire Aufbauphase: kein Instant-Rush
     const myThreats = game.ents.filter(e=>e.isP && e.hp>0);
@@ -852,37 +991,43 @@ function updateEnemyAI(dt){
     if(hasComboReady && game._comboT > 6 && !closeThreat && Math.random()<0.5){
         game._comboT = 0; game._aiT = 0;
         const sorted=[...game.enemyDeck].sort((a,b)=>UNIT_DB[b].hp-UNIT_DB[a].hp);
-        const tank = sorted.find(k=>UNIT_DB[k].cost<=game.enemyElixir-3) || sorted[0];
+        const tank = sorted.find(k=>UNIT_DB[k].cost<=game.enemyElixir-3 && (game.enemyCD[k]||0)<=0) || sorted.find(k=>(game.enemyCD[k]||0)<=0);
+        if(!tank) return;
         const band = battleY(game.h);
         const y = band.top + Math.random()*(band.bot-band.top);
         if(spawn(tank, false, null, game.towers.e.x-330-Math.random()*80, y)){
-            const sup = game.enemyDeck.find(k=>k!==tank && UNIT_DB[k].rng>150 && UNIT_DB[k].cost<=game.enemyElixir);
-            if(sup) setTimeout(()=>{ if(game.active&&!game.over&&game.phase==="fight") spawn(sup, false, null, game.towers.e.x-140, y+(Math.random()*60-30)); }, 1200);
+            game.enemyCD[tank]=cardCooldown(tank)*0.7;
+            const sup = game.enemyDeck.find(k=>k!==tank && UNIT_DB[k].rng>150 && UNIT_DB[k].cost<=game.enemyElixir && (game.enemyCD[k]||0)<=0);
+            if(sup) setTimeout(()=>{ if(game.active&&!game.over&&game.phase==="fight"&&spawn(sup, false, null, game.towers.e.x-140, y+(Math.random()*60-30))) game.enemyCD[sup]=cardCooldown(sup)*0.7; }, 1200);
             killfeed(`🔴 ${game.enemyName}: Kombo-Push!`);
         }
         return;
     }
     if(game._aiT < (closeThreat?0.6:(midThreat?1.0:1.6))) return;
     game._aiT = 0;
-    const afford = game.enemyDeck.filter(k=>UNIT_DB[k].cost <= game.enemyElixir);
+    const afford = game.enemyDeck.filter(k=>UNIT_DB[k].cost <= game.enemyElixir && (game.enemyCD[k]||0)<=0);
     if(!afford.length) return;
+    // Heiler nur wenn eigene Units verletzt sind, sonst überspringen
+    const eInjured = game.ents.some(e=>!e.isP && e.hp>0 && e.hp/e.max<0.85);
+    const noHeal = afford.filter(k=>UNIT_DB[k].role!=="healer" || eInjured);
+    const pool = noHeal.length?noHeal:afford;
     let pick;
     if(closeThreat){
         // Konter: billige schnelle/hohe-DPS gegen Bedrohung, Spawn direkt vor Bedrohung
-        const sorted=[...afford].sort((a,b)=>(UNIT_DB[b].dmg*UNIT_DB[b].atkSpd/UNIT_DB[b].cost)-(UNIT_DB[a].dmg*UNIT_DB[a].atkSpd/UNIT_DB[a].cost));
+        const sorted=[...pool].sort((a,b)=>(UNIT_DB[b].dmg*UNIT_DB[b].atkSpd/UNIT_DB[b].cost)-(UNIT_DB[a].dmg*UNIT_DB[a].atkSpd/UNIT_DB[a].cost));
         pick = sorted[Math.floor(Math.random()*Math.min(2,sorted.length))];
         const band = battleY(game.h);
-        spawn(pick, false, null, Math.max(game.towers.p.x+100, closeThreat.x+90+Math.random()*60), Math.max(band.top,Math.min(band.bot, closeThreat.y+(Math.random()*70-35))));
+        if(spawn(pick, false, null, Math.max(game.towers.p.x+100, closeThreat.x+90+Math.random()*60), Math.max(band.top,Math.min(band.bot, closeThreat.y+(Math.random()*70-35))))) game.enemyCD[pick]=cardCooldown(pick)*0.7;
         return;
     }
     if(game.enemyElixir < 5 && Math.random()<0.5) return; // Elixier sparen statt blind spammen
-    afford.sort((a,b)=>UNIT_DB[a].cost-UNIT_DB[b].cost);
-    pick = afford[Math.floor(Math.random()*afford.length)];
+    pool.sort((a,b)=>UNIT_DB[a].cost-UNIT_DB[b].cost);
+    pick = pool[Math.floor(Math.random()*pool.length)];
     const band2 = battleY(game.h);
     const backX = game.towers.e.x - 120 - Math.random()*180;
     const frontX = game.towers.e.x - 320 - Math.random()*120;
     const x = (myThreats.length>2) ? backX : frontX;
-    spawn(pick, false, null, x, band2.top + Math.random()*(band2.bot-band2.top));
+    if(spawn(pick, false, null, x, band2.top + Math.random()*(band2.bot-band2.top))) game.enemyCD[pick]=cardCooldown(pick)*0.7;
 }
 
 function update(dt){
@@ -932,7 +1077,10 @@ function update(dt){
         const dx=tx-p.x, dy=ty-p.y, dist=Math.hypot(dx,dy);
         if(dist < 18){
             p.dead=true;
-            if(p.target && p.target.hp>0) dealDamage(p.target, p.d, p.fromP, p.x, p.y, p.atkKey||null);
+            if(p.isHeal){
+                if(p.target && p.target.hp>0) healUnit(p.target, -p.d, p.fromP, p.atkKey||null);
+            }
+            else if(p.target && p.target.hp>0) dealDamage(p.target, p.d, p.fromP, p.x, p.y, p.atkKey||null);
             else if(p.towerRef && p.towerRef.hp>0) dealDamage(p.towerRef, p.d, p.fromP, p.x, p.y, p.atkKey||null);
         } else { const s=750*dt; p.x+=(dx/dist)*s; p.y+=(dy/dist)*s; }
     });
@@ -965,12 +1113,23 @@ function update(dt){
     td.classList.toggle('overtime', over && !sudden && game.timeLeft>0);
     td.classList.toggle('sudden', sudden && game.timeLeft>0);
     document.getElementById('kill-txt').innerText = `💀 ${game.kills} : ${game.enemyKills}`;
+    // Karten-Cooldowns ticken + UI
+    Object.keys(game.cooldowns).forEach(k=>{ game.cooldowns[k]=Math.max(0, game.cooldowns[k]-dt); });
     game.battleDeck.forEach(k => {
         const card=document.getElementById('card-'+k);
         if(card){
-            const ready = game.elixir>=UNIT_DB[k].cost;
+            const cd = game.cooldowns[k]||0, max = cardCooldown(k);
+            const afford = game.elixir>=UNIT_DB[k].cost;
+            const ready = afford && cd<=0;
             card.classList.toggle('ready', ready);
-            card.classList.toggle('disabled', !ready);
+            card.classList.toggle('disabled', !afford);
+            card.classList.toggle('on-cd', cd>0);
+            const ov=document.getElementById('cd-'+k);
+            if(ov){
+                ov.style.height = cd>0 ? (cd/max*100)+"%" : "0%";
+                ov.querySelector('span').innerText = cd>0 ? Math.ceil(cd)+"s" : "";
+            }
+            if(cd>0 && game.selected===k){ game.selected=null; document.querySelectorAll('.game-card').forEach(c=>c.classList.remove('selected')); updateHint(); }
         }
     });
 
@@ -1071,9 +1230,11 @@ function endGame(win, draw=false){
     if(win) safePlay(AUDIO.victory);
 }
 function showEnd(win, draw=false){
-    let reward=0, mvp="-", mvpDmg=0;
+    let reward=0, mvp="-", mvpDmg=0, mhk="-", mhAmt=0;
     Object.keys(game.dmgStats).forEach(k=>{ if(game.dmgStats[k]>mvpDmg){ mvpDmg=game.dmgStats[k]; mvp=k; } });
+    Object.keys(game.healStats||{}).forEach(k=>{ if(game.healStats[k]>mhAmt){ mhAmt=game.healStats[k]; mhk=k; } });
     const mvpTxt = mvp==="-" ? "–" : `${UNIT_DB[mvp].icon} ${UNIT_DB[mvp].name} (${Math.round(mvpDmg)})`;
+    const healTxt = mhk==="-" ? "" : `💚 Top-Heal: <b>${UNIT_DB[mhk].icon} ${UNIT_DB[mhk].name} (${Math.round(mhAmt)})</b><br>`;
     if(win){
         player.streak=(player.streak||0)+1;
         const streakBonus=Math.min(100,(player.streak-1)*20);
@@ -1090,6 +1251,7 @@ function showEnd(win, draw=false){
         `💀 Kills: <b>${game.kills}</b> : ${game.enemyKills}<br>`+
         `🏰 Basis-HP: <b>${Math.max(0,Math.ceil(game.towers.p.hp))}</b> vs ${Math.max(0,Math.ceil(game.towers.e.hp))}<br>`+
         `⭐ MVP: <b>${mvpTxt}</b><br>`+
+        healTxt+
         `⏱ Zeit: <b>${Math.floor(game.time/60)}:${String(Math.floor(game.time%60)).padStart(2,'0')}</b><br>`+
         `🪙 Belohnung: <b style="color:var(--gold)">+${reward}</b>${win&&player.streak>1?` <span style="font-size:11px">(inkl. Streak +${Math.min(100,(player.streak-1)*20)})</span>`:""}`;
     document.getElementById('end-overlay').classList.add('show');
