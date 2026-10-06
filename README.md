@@ -17,5 +17,5 @@ Enthält Mini-Game (10s, x2 Gewinn), Leaderboard und Persistence.
 - 🐛 [Report an issue](https://github.com/roman181/PEPAPEPT/issues).
 - 👤 [Explore the creator's projects](https://omgithub.com/roman181).
 - 🌍 [Create with OMGithub](https://omgithub.com).
-- 🧬 [Explore the remix source](https://github.com/roman181/PEPAPEPT).
+- 🧬 [Explore the remix source](https://github.com/roman181/PEPAPEPT/tree/a92876cbee7a2f789eaedee1dbb369f1743e3a5a).
 <!-- omgithub:readme:end -->
