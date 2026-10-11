@@ -48,7 +48,7 @@ html,body{margin:0;padding:0;background:#05050c;color:#fff;font-family:'Segoe UI
 .abar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#ff9800);border-radius:5px;transition:width .5s}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}}
 /* mode cards */
-.modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
 .mode{border:2px solid #3d3d5c;background:linear-gradient(180deg,#23233a,#151524);border-radius:16px;padding:13px 6px;color:#fff;cursor:pointer;text-align:center;animation:fadeUp .5s ease;transition:transform .12s,border-color .12s}
 .mode:active{transform:scale(.94)}
 .mode b{display:block;font-size:13px;margin-top:4px}.mode span{font-size:10px;color:#9a9ac0}
@@ -187,7 +187,6 @@ html,body{margin:0;padding:0;background:#05050c;color:#fff;font-family:'Segoe UI
     <div class="arena" id="arenaBanner"><div class="an" id="arenaName">🏟️ Frosch-Teich</div><div class="ap" id="arenaProg">0 / 5 Siege zur nächsten Arena</div><div class="abar"><i id="arenaFill" style="width:0%"></i></div></div>
     <div class="modes">
       <div class="mode hot" onclick="startAIGame()"><div class="mi">🤖</div><b>KI-Duell</b><span id="diffLbl">Mittel</span></div>
-      <div class="mode" onclick="startLocalGame()"><div class="mi">👥</div><b>2P Lokal</b><span>ein Gerät</span></div>
       <div class="mode" onclick="openNet()"><div class="mi">🌐</div><b>Online</b><span>P2P-Code</span></div>
     </div>
     <div class="diffrow" id="diffRow">
@@ -198,7 +197,6 @@ html,body{margin:0;padding:0;background:#05050c;color:#fff;font-family:'Segoe UI
     <div class="hist" id="hist"></div>
     <div style="display:flex;gap:8px;margin:12px 0">
       <button class="ibtn" style="flex:1" onclick="openGDD()">📖 Spielkonzept</button>
-      <button class="ibtn" style="flex:1" onclick="resetSave()">🗑️ Reset</button>
     </div>
    </section>
    <section id="tab-deck" class="msec">
@@ -279,7 +277,7 @@ Ziel: Mehr Kronen in 3:00 Min. Prinzessin-Turm = 1 Krone, König = Sofort-Sieg.
 Hand: 4 Karten + Nächste aus 8er-Deck, gespielte Karte rotiert ans Ende.
 Elixier: 1 pro 2.8s (max 10), letzte Minute doppelt. Kill = +1 Elixier.
 Arenen: 5 Stufen nach Siegen, ändern Deko + Gegner-Bonus im KI-Duell.
-Modi: KI-Duell (3 Stufen), 2P Lokal (ein Gerät), Online 1:1 (P2P, Host simuliert).
+Modi: KI-Duell (3 Stufen), Online 1:1 (P2P, Host simuliert).
 Rollen: Tank blockt / Nahkampf / Fern kitet / Heiler heilt.
 Effekte: Burn 🔥 / Slow ❄️ / Tod-Explosion 💥 / Charge 💨 / Backstab 🗡️.
 Daten: 20 Monster (UNIT_DB), 9 Gear-Items (GEAR_DB, 1 Slot/Char), 4 KI-Stile (ARCH), 5 Arenen (ARENAS), Türme/Kosten in CFG.
@@ -408,7 +406,7 @@ announce(bySide===G.view?"👑 TURM GEFALLEN!":"💀 TURM VERLOREN!",t.kind==="k
 if(t.kind==="king"){finishBySide(bySide,false);}}
 /* Spawn */
 function playCard(side,hi,x,y){const h=G.hands[side];const k=h.cards[hi];if(!k||h.el<UNIT_DB[k].cost)return false;
-if(G.mode!=="local"){if(side===G.view?(y<CFG.AH/2):(y>=CFG.AH/2))return false;}else{if(side===0?y<CFG.AH/2:y>=CFG.AH/2)return false;}
+if(side===G.view?(y<CFG.AH/2):(y>=CFG.AH/2))return false;
 if(G.ents.length>=CFG.MAX_ENTS){if(side===G.view)toast("⚠️ Zu viele Einheiten!");return false;}
 h.el-=UNIT_DB[k].cost;const lvl=side===G.view?plvl(k):(G.foe?G.foe.lvl:1);
 G.ents.push(new Ent(k,side,lvl,x,Math.max(40,Math.min(CFG.AH-40,y))));markSpawn(x,y,side);
@@ -453,38 +451,29 @@ document.getElementById('eName').innerText=foe.name.slice(0,16);document.getElem
 document.getElementById('waveLbl').innerText=ARENAS[G.arena].icon+" "+ARENAS[G.arena].name.toUpperCase();
 document.getElementById('topHand').classList.remove('on');
 buildHands();beginLoop();}
-function startLocalGame(){ensureDeck();if(player.deck.length<CFG.deckSize)return toast("Sammle erst Karten aus Truhen! 📦");closeNet();
-showGame();setupMatch("local",{name:"Spieler 2",deck:[...player.deck].sort(()=>Math.random()-.5),lvl:1,aggro:0,hpB:1,dmgB:1});
-G.hands[1]=mkHand([...player.deck].sort(()=>Math.random()-.5));
-G.foe.gear={};G.hands[1].cards.concat(G.hands[1].queue).forEach(k=>{const g=player.units[k]&&player.units[k].g;if(g&&GEAR_DB[g])G.foe.gear[k]=g;});
-uiVs("Spieler 1 vs Spieler 2","Lokales Duell — oben vs unten","👆");
-document.getElementById('eName').innerText="SPIELER 2 (OBEN)";document.getElementById('pName').innerText="SPIELER 1 (UNTEN)";
-document.getElementById('waveLbl').innerText="LOKAL 1:1";document.getElementById('topHand').classList.add('on');
-buildHands();buildTopHand();beginLoop();}
 function uiVs(boss,sub,foeN){document.getElementById('vsboss').innerText=boss;document.getElementById('vsarch').innerText=sub;document.getElementById('vsfoeN').innerText=foeN;
 document.getElementById('vsme').innerText=G.hands[0].cards.concat([G.hands[0].queue[0]]).map(k=>UNIT_DB[k].icon).join("");
 document.getElementById('vsfoe').innerText=G.hands[1].cards.slice(0,4).map(k=>UNIT_DB[k].icon).join("");
 document.getElementById('vsov').classList.add('show');document.getElementById('vscount').innerText="3";document.getElementById('endov').classList.remove('show');document.getElementById('killfeed').innerHTML='';}
-function playAgain(){document.getElementById('endov').classList.remove('show');if(!G)return;if(G.mode==="local")startLocalGame();else if(G.mode==="online"){toast("Neues Online-Match: Raum erneut erstellen.");quitToMenu(true);}else startAIGame();}
+function playAgain(){document.getElementById('endov').classList.remove('show');if(!G)return;if(G.mode==="online"){toast("Neues Online-Match: Raum erneut erstellen.");quitToMenu(true);}else startAIGame();}
 function showGame(){document.getElementById('menu-screen').classList.remove('active');document.getElementById('game-screen').classList.add('active');sizeCanvas();}
 /* Hände-UI */
 function cardHTML(k,small){const d=UNIT_DB[k];const gr=player.units[k]&&player.units[k].g&&GEAR_DB[player.units[k].g]?GEAR_DB[player.units[k].g].icon:"";return '<div class="cost">'+d.cost+'</div>'+(gr?'<div class="gbadge" style="top:auto;bottom:-7px;right:-7px">'+gr+'</div>':'')+'<img src="'+IMAGES[k].src+'" onerror="this.outerHTML=\'<div style=font-size:'+(small?26:32)+'px>'+d.icon+'</div>\'"><div class="nm">'+d.name+'</div>';}
 function buildHands(){const w=document.getElementById('hand');w.innerHTML='';G.hands[G.view].cards.forEach((k,i)=>{const c=document.createElement('div');c.className='gcard off';c.id='hc'+i;c.onclick=()=>selCard(G.view,i);c.innerHTML=cardHTML(k);w.appendChild(c);});const nx=document.createElement('div');nx.className='gcard';nx.style.opacity=.65;nx.id='hnext';nx.innerHTML='<div class="nm">NEXT</div><div style="font-size:26px">'+(G.hands[G.view].next?UNIT_DB[G.hands[G.view].next].icon:"?")+'</div>';w.appendChild(nx);}
 function buildTopHand(){const w=document.getElementById('topHand');w.innerHTML='';G.hands[1].cards.forEach((k,i)=>{const c=document.createElement('div');c.className='gcard off';c.id='tc'+i;c.onclick=()=>selCard(1,i);c.innerHTML=cardHTML(k,true);w.appendChild(c);});}
-function selCard(side,i){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[side];if(h.el<UNIT_DB[h.cards[i]].cost){if(side===G.view||G.mode==="local")toast("Brauche "+UNIT_DB[h.cards[i]].cost+" 💧!");return;}h.sel=(h.sel===i?-1:i);SFX.spawn();refreshSel();updHint();}
-function refreshSel(){for(let i=0;i<4;i++){const a=document.getElementById('hc'+i);if(a)a.classList.toggle('sel',G.hands[G.view].sel===i);}for(let i=0;i<4;i++){const a=document.getElementById('tc'+i);if(a)a.classList.toggle('sel',G.hands[1].sel===i);}}
-function updHint(){const el=document.getElementById('hint');if(!el||!G)return;if(G.mode==="local")el.innerText="Blau=unten · Rot=oben — je eigene Hälfte tippen!";else{const h=G.hands[G.view];const k=h.sel>=0?h.cards[h.sel]:null;el.innerText=k?UNIT_DB[k].icon+" "+UNIT_DB[k].name+": tippe deine Hälfte!":"Karte wählen → eigene Hälfte tippen!";}}
+function selCard(side,i){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[side];if(h.el<UNIT_DB[h.cards[i]].cost){if(side===G.view)toast("Brauche "+UNIT_DB[h.cards[i]].cost+" 💧!");return;}h.sel=(h.sel===i?-1:i);SFX.spawn();refreshSel();updHint();}
+function refreshSel(){for(let i=0;i<4;i++){const a=document.getElementById('hc'+i);if(a)a.classList.toggle('sel',G.hands[G.view].sel===i);}}
+function updHint(){const el=document.getElementById('hint');if(!el||!G)return;{const h=G.hands[G.view];const k=h.sel>=0?h.cards[h.sel]:null;el.innerText=k?UNIT_DB[k].icon+" "+UNIT_DB[k].name+": tippe deine Hälfte!":"Karte wählen → eigene Hälfte tippen!";}}
 /* Input mit korrektem Letterbox-Mapping */
 function toArena(cx,cy){const r=cvs.getBoundingClientRect();const vp=G&&G.vp?G.vp:{s:r.width/CFG.AW,ox:0,oy:0};const sx=(cx-r.left-vp.ox)/vp.s,sy=(cy-r.top-vp.oy)/vp.s;return{x:Math.max(0,Math.min(CFG.AW,sx)),y:Math.max(0,Math.min(CFG.AH,sy))};}
 function tapDeploy(cx,cy){if(!G||!G.active||G.over||G.paused||G.phase!=="fight")return;ac();const p=toArena(cx,cy);const y=G.flip?CFG.AH-p.y:p.y,x=G.flip?CFG.AW-p.x:p.x;
-if(G.mode==="local"){if(y>=CFG.AH/2){if(G.hands[0].sel<0)return;if(playCard(0,G.hands[0].sel,x,y)){buildHands();buildTopHand();}}else{if(G.hands[1].sel<0)return;if(playCard(1,G.hands[1].sel,x,y)){buildHands();buildTopHand();}}refreshSel();return;}
 const me=G.view;
 if(G.mode==="online"&&!G.isHost){const h=G.hands[me];if(h.sel<0)return;const mine=me===0?y>=CFG.AH/2:y<CFG.AH/2;if(!mine){toast("Nur deine Hälfte!");addF(x,y,"✖","#ff5252");return;}const k=h.cards[h.sel];netSend({t:"spawn",key:k,x:Math.round(x),y:Math.round(y)});h.sel=-1;refreshSel();updHint();return;}
 const h=G.hands[me];if(h.sel<0)return;const mine=me===0?y>=CFG.AH/2:y<CFG.AH/2;if(!mine){toast(me===0?"Nur deine (untere) Hälfte! ⬆️":"Nur deine (obere) Hälfte! ⬇️");addF(x,y,"✖","#ff5252");return;}
 if(playCard(me,h.sel,x,y))buildHands();refreshSel();}
 /* Update */
 function finishBySide(side,draw){if(!G||G.over)return;endGame(G.view===side&&!draw,draw);}
-function update(dt){if(G.phase==="count"){G.countT-=dt;const el=document.getElementById('vscount');if(el)el.innerText=G.countT<=.6?"LOS! 🔥":Math.max(1,Math.ceil(G.countT));if(G.countT<=0){G.phase="fight";document.getElementById('vsov').classList.remove('show');announce("⚔️ KAMPF!",G.mode==="ai"?G.foe.name:(G.mode==="local"?"Oben vs Unten":"Online-Duell"),1400);}return;}
+function update(dt){if(G.phase==="count"){G.countT-=dt;const el=document.getElementById('vscount');if(el)el.innerText=G.countT<=.6?"LOS! 🔥":Math.max(1,Math.ceil(G.countT));if(G.countT<=0){G.phase="fight";document.getElementById('vsov').classList.remove('show');announce("⚔️ KAMPF!",G.mode==="ai"?G.foe.name:"Online-Duell",1400);}return;}
 G.time+=dt;G.left=Math.max(0,CFG.matchTime-G.time);const ot=G.time>CFG.otAt,sd=G.time>CFG.sudAt;
 if(ot&&!G.annOT){G.annOT=true;announce("⚡ DOPPEL-ELIXIER!","Beide laden 2x",1500);}
 if(sd&&!G.annSD){G.annSD=true;announce("💀 SUDDEN DEATH!","Türme bluten — erster 👑 gewinnt!",1800);}
@@ -496,7 +485,6 @@ const mult=ot?2:1;
 if(G.mode==="online"&&!G.isHost){/* Elixier via Snapshot */}
 else{G.hands[0].el=Math.min(10,G.hands[0].el+CFG.regen*mult*dt);
 if(G.mode==="ai")botAI(dt,1,G.foe);}
-if(G.mode==="local"){G.hands[1].el=Math.min(10,G.hands[1].el+CFG.regen*mult*dt);}
 if(G.mode==="online"&&G.isHost){G.hands[1].el=Math.min(10,G.hands[1].el+CFG.regen*mult*dt);G._net=(G._net||0)+dt;if(G._net>.12){G._net=0;netSnap();}}
 G.ents.forEach(e=>e.upd(dt));G.ents=G.ents.filter(e=>e.hp>0);
 G.towers.forEach(tw=>{if(tw.dead)return;if(tw.hitT>0)tw.hitT-=dt*3;if(tw.muz>0)tw.muz-=dt*4;tw.cool-=dt;if(tw.cool>0)return;let pick=null,ps=1e9;G.ents.forEach(e=>{if(e.side===tw.side||e.hp<=0)return;const dx=e.x-tw.x,dy=e.y-tw.y;const d2=dx*dx+dy*dy;if(d2>tw.rng*tw.rng)return;const s=(e.hp/e.max)*300+Math.sqrt(d2)*.4-(e.role==="tank"?40:0);if(s<ps){ps=s;pick=e;}});if(pick){tw.cool=1/tw.atkSpd;tw.muz=1;G.projs.push({x:tw.x,y:tw.y,p:tw.side===G.view?"🔰":"🔥",d:tw.dmg,side:tw.side,ak:null,tx:pick.x,ty:pick.y-28,tgt:pick,tw:null,dead:false,trail:[]});for(let i=0;i<4;i++)addP(tw.x,tw.y,tw.side===G.view?"#69f0ae":"#ff8a65",3,120);}});
@@ -520,8 +508,7 @@ if(G.left<=0&&!G.over){if(G.c0!==G.c1)finishBySide(G.c0>G.c1?0:1,false);
 else{const h0=G.towers.filter(t=>t.side===0).reduce((a,t)=>a+Math.max(0,t.hp),0),h1=G.towers.filter(t=>t.side===1).reduce((a,t)=>a+Math.max(0,t.hp),0);if(Math.abs(h0-h1)<1)endGame(false,true);else finishBySide(h0>h1?0:1,false);}}}
 /* Karten-Refresh */
 function refreshCards(){if(!G)return;const hv=G.hands[G.view];for(let i=0;i<4;i++){const c=document.getElementById('hc'+i);if(!c)continue;const k=hv.cards[i];if(!k||!UNIT_DB[k])continue;const ok=hv.el>=UNIT_DB[k].cost;c.classList.toggle('rdy',ok);c.classList.toggle('off',!ok);}
-const nx=document.getElementById('hnext');if(nx&&hv.next&&UNIT_DB[hv.next])nx.querySelector('div:nth-child(2)').innerText=UNIT_DB[hv.next].icon;
-if(G.mode==="local"){for(let i=0;i<4;i++){const c=document.getElementById('tc'+i);if(!c)continue;const k=G.hands[1].cards[i];if(!k||!UNIT_DB[k])continue;const ok=G.hands[1].el>=UNIT_DB[k].cost;c.classList.toggle('rdy',ok);c.classList.toggle('off',!ok);}}}
+const nx=document.getElementById('hnext');if(nx&&hv.next&&UNIT_DB[hv.next])nx.querySelector('div:nth-child(2)').innerText=UNIT_DB[hv.next].icon;}
 /* ===== ARENA-RENDERING (2D-Stil) ===== */
 /* ===== ARENA-STATIC: 1x pro Match cachen, Kit-Farben aus g1/g2 ===== */
 function hx2rgb(h){h=h.replace("#","");return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
@@ -551,7 +538,7 @@ const wt=G.time*2.2;ctx.fillStyle=kit.water;ctx.fillRect(0,390,CFG.AW,20);
 ctx.strokeStyle=kit.foam;ctx.lineWidth=2;for(let r=0;r<2;r++){ctx.globalAlpha=.7-r*.25;ctx.beginPath();for(let x=0;x<=CFG.AW;x+=20){const y=395+r*8+Math.sin(x/46+wt+r*2)*2.5;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}ctx.globalAlpha=1;
 ctx.fillStyle=kit.foam;for(let x=0;x<CFG.AW;x+=36)ctx.fillRect(x+((wt*34)%36),397,16,2);
 // Mittellinie + eigene Hälfte (Boost bei Kartenauswahl)
-const hasSel=G.hands&&(G.hands[G.view].sel>=0||(G.mode==="local"&&G.hands[1].sel>=0));
+const hasSel=G.hands&&G.hands[G.view].sel>=0;
 ctx.strokeStyle=hasSel?"rgba(255,235,59,.85)":"rgba(255,255,255,.45)";ctx.setLineDash([8,8]);ctx.lineWidth=hasSel?3:2;ctx.beginPath();ctx.moveTo(0,400);ctx.lineTo(CFG.AW,400);ctx.stroke();ctx.setLineDash([]);
 ctx.fillStyle=hasSel?"rgba(120,255,120,.16)":"rgba(120,255,120,.08)";if(G.view===0)ctx.fillRect(0,400,CFG.AW,400);else ctx.fillRect(0,0,CFG.AW,400);
 // Spawn-Marker + Death-/Heal-Ringe (Fairness + Feedback)
@@ -616,9 +603,9 @@ if(G.mode==="online"&&G.isHost&&conn){try{conn.send({t:"end",side:sideWon,draw})
 let reward=0,mvp="-",md=0;Object.keys(G.dmgSt).forEach(k=>{if(G.dmgSt[k]>md){md=G.dmgSt[k];mvp=k;}});
 const mvpT=mvp==="-"?"–":UNIT_DB[mvp].icon+" "+UNIT_DB[mvp].name+" ("+Math.round(md)+")";
 const myC=G.view===0?G.c0:G.c1,foC=G.view===0?G.c1:G.c0;const win=!draw&&sideWon===G.view;
-if(G.mode==="ai"||G.mode==="local"||G.mode==="online"){if(win){player.streak++;const sb=Math.min(100,(player.streak-1)*20);reward=(G.mode==="ai"?120:60)+myC*50+G.k0*5+sb;player.coins+=reward;player.wins++;}else{reward=(draw?40:20)+G.k0*5;player.coins+=reward;if(!draw){player.losses++;player.streak=0;}}
+if(G.mode==="ai"||G.mode==="online"){if(win){player.streak++;const sb=Math.min(100,(player.streak-1)*20);reward=(G.mode==="ai"?120:60)+myC*50+G.k0*5+sb;player.coins+=reward;player.wins++;}else{reward=(draw?40:20)+G.k0*5;player.coins+=reward;if(!draw){player.losses++;player.streak=0;}}
 player.kills+=G.k0;player.history.unshift({bot:G.eName,win,k:G.k0,ek:G.k1,r:reward});player.history=player.history.slice(0,10);save();}
-document.getElementById('endT').innerText=G.mode==="local"?("🏆 "+(sideWon===0?"SPIELER 1 (UNTEN)":"SPIELER 2 (OBEN)")+" SIEGT!"):(win?"🏆 SIEG!":(draw?"🤝 REMIS":"💀 NIEDERLAGE"));
+document.getElementById('endT').innerText=(win?"🏆 SIEG!":(draw?"🤝 REMIS":"💀 NIEDERLAGE"));
 document.getElementById('endS').innerText=(ARENAS[G.arena].icon+" "+ARENAS[G.arena].name)+" · "+G.eName;
 document.getElementById('endStats').innerHTML="👑 Kronen: <b>"+myC+" : "+foC+"</b><br>💀 Kills: <b>"+G.k0+" : "+G.k1+"</b><br>⭐ MVP: <b>"+mvpT+"</b><br>⏱ Zeit: <b>"+Math.floor(G.time/60)+":"+String(Math.floor(G.time%60)).padStart(2,"0")+"</b><br>🪙 <b style='color:var(--gold)'>+"+reward+"</b>";
 document.getElementById('endov').classList.add('show');SFX.win();renderMenu();}
@@ -716,7 +703,6 @@ function rmDeck(k){player.deck=player.deck.filter(x=>x!==k);save();renderMenu();
 function buyChest(sz){const p={small:50,medium:100,large:200}[sz],n={small:2,medium:5,large:12}[sz];if(player.coins<p){toast("Nicht genug Coins! 🎁");return;}player.coins-=p;const keys=Object.keys(UNIT_DB);const got={};for(let i=0;i<n;i++){const k=keys[Math.floor(Math.random()*keys.length)];player.units[k].c++;got[k]=(got[k]||0)+1;}save();renderMenu();toast("📦 "+Object.keys(got).map(k=>UNIT_DB[k].icon+" x"+got[k]).join(", "));}
 function claimFree(){if(Date.now()-player.lastFree<60000)return;player.lastFree=Date.now();player.coins+=40;save();renderMenu();toast("🎁 +40 Coins!");}
 function merge(k){if(player.units[k].c<2)return;player.units[k].c-=2;player.units[k].l++;save();renderMenu();toast(UNIT_DB[k].icon+" "+UNIT_DB[k].name+" → Lvl "+player.units[k].l+"!");}
-function resetSave(){if(!confirm("Wirklich alles zurücksetzen?"))return;localStorage.removeItem(CFG.saveKey);player={coins:300,units:{},deck:[],diff:1,wins:0,losses:0,kills:0,streak:0,lastFree:0,history:[]};Object.keys(UNIT_DB).forEach(k=>player.units[k]={l:1,c:0,g:null});ensureDeck();save();renderMenu();}
 /* ===== GDD (Spielkonzept in einer Datei) ===== */
 function gddHTML(){let rows=Object.keys(UNIT_DB).map(k=>{const d=UNIT_DB[k];const fx=[d.heal?"Heal "+d.heal:"",d.burn?"Burn":"",d.slow?"Slow":"",d.deathBoom?"Boom":"",d.charge?"Charge":"",d.backstab?"Stab":""].filter(Boolean).join(",");return "<tr><td>"+d.icon+" "+d.name+"</td><td>"+d.cost+"</td><td>"+d.hp+"</td><td>"+d.dmg+"</td><td>"+d.rng+"</td><td>"+d.role+"</td><td>"+(fx||"–")+"</td></tr>";}).join("");
 let ar=ARENAS.map((a,i)=>"<tr><td>"+(i+1)+". "+a.icon+" "+a.name+"</td><td>"+a.need+"</td><td>+Bonus "+(i)+"</td></tr>").join("");
@@ -726,7 +712,7 @@ return "<h3>🎯 Konzept</h3>Vertikales 1-gegen-1-Arena-Duell im Browser (Mobile
 +"<h3>🏟️ Arenen</h3><table class='gdd-table'><tr><th>Arena</th><th>Siege</th><th>KI-Bonus</th></tr>"+ar+"</table>"
 +"<h3>👹 Monster (20, Basiswerte Lvl 1, +12 %/Lvl)</h3><table class='gdd-table'><tr><th>Unit</th><th>💧</th><th>❤️</th><th>🗡️</th><th>🎯</th><th>Rolle</th><th>FX</th></tr>"+rows+"</table>"
 +"<h3>⚙️ Ausrüstung (1 Slot pro Charakter)</h3>Jeder Charakter trägt höchstens 1 Gear (Waffe ODER Rüstung ODER Fahrzeug). Wechsel kostet vollen Preis, altes Gear verfällt. Boni wirken prozentual und skalieren mit Level mit.<table class='gdd-table'><tr><th>Gear</th><th>Slot</th><th>Preis</th><th>Bonus</th></tr>"+gr+"</table>"
-+"<h3>🎲 Modi & Daten</h3><b>KI-Duell:</b> 3 Stufen (Rookie Lvl 1 / Club Lvl 4 / Boss Lvl 8, Aggro .35/.6/.9). <b>2P Lokal:</b> ein Gerät, oben vs unten. <b>Online:</b> P2P-Code, Host simuliert (8 Snapshots/s), Gast sendet Züge. <b>Shop:</b> 📦50/2, 💼100/5, 💎200/12. <b>Upgrade:</b> 2 gleiche Karten = +1 Lvl. <b>Belohnung:</b> Sieg 120 + 50/Krone + 5/Kill + Streak (max +100), Niederlage 20, Remis 40. <b>Caps:</b> 30 Units, 300 Partikel, 30 Floats.";}
++"<h3>🎲 Modi & Daten</h3><b>KI-Duell:</b> 3 Stufen (Rookie Lvl 1 / Club Lvl 4 / Boss Lvl 8, Aggro .35/.6/.9). <b>Online:</b> P2P-Code, Host simuliert (8 Snapshots/s), Gast sendet Züge. <b>Shop:</b> 📦50/2, 💼100/5, 💎200/12. <b>Upgrade:</b> 2 gleiche Karten = +1 Lvl. <b>Belohnung:</b> Sieg 120 + 50/Krone + 5/Kill + Streak (max +100), Niederlage 20, Remis 40. <b>Caps:</b> 30 Units, 300 Partikel, 30 Floats.";}
 function openGDD(){document.getElementById('gddBody').innerHTML=gddHTML();document.getElementById('gddM').classList.add('open');}
 function closeGDD(){document.getElementById('gddM').classList.remove('open');}
 setInterval(()=>{if(document.getElementById('menu-screen').classList.contains('active'))renderMenu();},2000);
