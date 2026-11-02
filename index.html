@@ -116,12 +116,6 @@ html,body{margin:0;padding:0;background:#05050c;color:#fff;font-family:'Segoe UI
 #efill{height:100%;width:50%;background:linear-gradient(180deg,#ffd6ff 0%,#d633ff 48%,#8700a8 100%);box-shadow:0 0 12px var(--accent);transition:width .12s}
 .pips{position:absolute;inset:0;display:flex}.pips i{flex:1;border-right:1px solid rgba(255,255,255,.3)}
 .hand{display:flex;gap:8px;justify-content:center;align-items:flex-end}
-.spellbar{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
-.scard{width:52px;height:60px;background:linear-gradient(155deg,#5b437e 0%,#302344 48%,#171722 100%);border:2px solid #a68bc9;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;cursor:pointer;flex-shrink:0;box-shadow:0 4px 0 #090912,0 6px 12px rgba(0,0,0,.62),inset 0 1px rgba(255,255,255,.25);transition:transform .12s}
-.scard.sel{border-color:var(--gold);box-shadow:0 0 14px rgba(255,235,59,.7);transform:translateY(-5px)}
-.scard.off{opacity:.45;filter:grayscale(.85)}
-.scard .si{font-size:24px;line-height:1}
-.scard .sn{font-size:8px;font-weight:700;white-space:nowrap}
 .emotes{display:flex;gap:6px;justify-content:center;margin-top:6px}
 .emotes button{background:rgba(255,255,255,.08);border:1px solid #55556e;color:#fff;border-radius:16px;padding:3px 11px;font-size:15px;cursor:pointer}
 .emotes button:active{transform:scale(.9)}
@@ -262,7 +256,6 @@ html,body{margin:0;padding:0;background:#05050c;color:#fff;font-family:'Segoe UI
       <div class="erow"><div style="color:#e1a6ff;font-weight:900">💧 <span id="elix">5</span>/10</div><div style="font-size:11px;color:#aaa" id="killL">💀 0:0</div></div>
       <div class="ebar"><div id="efill"></div><div class="pips"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
       <div class="hand" id="hand"></div>
-      <div class="spellbar" id="spellbar"></div>
       <div class="emotes" id="emotes"></div>
     </div>
   </div>
@@ -324,14 +317,7 @@ schwein_revolver:{name:"Outlaw",cost:3,hp:190,dmg:50,rng:300,spd:66,atkSpd:1.2,p
 schwein_schlaeger:{name:"Brute",cost:4,hp:570,dmg:52,rng:95,spd:46,atkSpd:.8,proj:null,icon:"🐷",role:"tank"},
 schwein_spion:{name:"Spion",cost:5,hp:180,dmg:88,rng:150,spd:82,atkSpd:1.4,proj:"🕵️",icon:"🐷",role:"melee",backstab:1.6},
 schwein_vollstrecker:{name:"Henker",cost:7,hp:780,dmg:115,rng:100,spd:40,atkSpd:.7,proj:null,icon:"🐷",role:"melee"}};
-/* ZAUBER: feste Leiste, kein Deck-Slot, kein Ent — Wirkung via dealDmg-Loop */
-const SPELL_DB={
-feuerball:{name:"Feuerball",cost:4,icon:"🔥",dmg:350,r:100,towerF:.4},
-pfeile:{name:"Pfeile",cost:3,icon:"🏹",dmg:45,ticks:3,r:140,towerF:.4},
-frost:{name:"Frost",cost:3,icon:"❄️",slow:{f:.35,dur:3},r:110}};
-const SPELL_IDS=["feuerball","pfeile","frost"];
-function isSpell(k){return !!SPELL_DB[k];}
-function getCard(k){return UNIT_DB[k]||SPELL_DB[k];}
+function getCard(k){return UNIT_DB[k];}
 const ARCH={rush:["frosch_soldat","pinguin_fahrer","pinguin_schlaeger","schwein_revolver","schwein_spion","pinguin_schuetze","frosch_soldat","pinguin_fahrer"],tank:["frosch_schwer","kroete_wache","pinguin_don","schwein_schlaeger","schwein_patin","schwein_vollstrecker","kroete_wache","frosch_schwer"],control:["frosch_sniper","pinguin_schuetze","pinguin_hacker","pinguin_killer","schwein_lady","schwein_revolver","frosch_sniper","pinguin_hacker"],chaos:["frosch_pyro","pinguin_bomber","pinguin_killer","schwein_vollstrecker","frosch_sanitaeter","schwein_doktor","frosch_pyro","pinguin_bomber"]};
 const ARCH_IDS=["rush","tank","control","chaos"];
 const BOSS_DECK=["schwein_patin","pinguin_don","schwein_vollstrecker","frosch_schwer","pinguin_bomber","frosch_pyro","pinguin_killer","frosch_sniper"];
@@ -371,7 +357,7 @@ function imgOK(i){return i&&i.complete&&i.naturalWidth>0;}
 let AC=null,muted=localStorage.getItem("pepe_muted")==="1",_lastHit=0;
 function ac(){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();return AC;}catch(e){return null;}}
 function beep(f,d,type,v){if(muted)return;try{const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=type||"square";o.frequency.value=f;g.gain.value=v||.05;g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d);}catch(e){}}
-const SFX={spawn:()=>beep(440,.08,"square",.04),deploy:r=>beep(r==="tank"?140:(r==="ranged"?520:(r==="healer"?660:330)),.09,"triangle",.05),hit:()=>{const n=performance.now();if(n-_lastHit<70)return;_lastHit=n;beep(180,.06,"square",.035);},shoot:()=>{const n=performance.now();if(n-(_lastShoot||0)<140)return;_lastShoot=n;beep(120,.09,"sawtooth",.04);},boom:()=>beep(90,.3,"sawtooth",.08),freeze:()=>beep(1200,.25,"sine",.05),count:()=>beep(660,.09,"square",.05),horn:()=>{beep(196,.4,"sawtooth",.07);setTimeout(()=>beep(147,.5,"sawtooth",.07),180);},win:()=>{beep(523,.12);setTimeout(()=>beep(659,.12),120);setTimeout(()=>beep(784,.22),240);},crown:()=>{beep(880,.15,"sine",.07);setTimeout(()=>beep(1174,.25,"sine",.07),150);}};
+const SFX={spawn:()=>beep(440,.08,"square",.04),deploy:r=>beep(r==="tank"?140:(r==="ranged"?520:(r==="healer"?660:330)),.09,"triangle",.05),hit:()=>{const n=performance.now();if(n-_lastHit<70)return;_lastHit=n;beep(180,.06,"square",.035);},shoot:()=>{const n=performance.now();if(n-(_lastShoot||0)<140)return;_lastShoot=n;beep(120,.09,"sawtooth",.04);},boom:()=>beep(90,.3,"sawtooth",.08),count:()=>beep(660,.09,"square",.05),horn:()=>{beep(196,.4,"sawtooth",.07);setTimeout(()=>beep(147,.5,"sawtooth",.07),180);},win:()=>{beep(523,.12);setTimeout(()=>beep(659,.12),120);setTimeout(()=>beep(784,.22),240);},crown:()=>{beep(880,.15,"sine",.07);setTimeout(()=>beep(1174,.25,"sine",.07),150);}};
 let _lastShoot=0;
 /* Musik-Loop: 16-Step-Sequencer (Bass + Hat), nur im Kampf */
 const MUS_BASS=[110,0,110,0,130.8,0,98,0,110,0,110,0,146.8,130.8,98,0];
@@ -405,7 +391,7 @@ function pocketRect(side,lane){if(side===0){return lane===0?{x0:20,x1:250,y0:200
 function pocketOpen(side,lane){const foe=1-side;const t=G.towers.find(t=>t.side===foe&&t.kind==="prin"&&t.lane===lane);return t&&t.dead;}
 function inPocket(side,x,y){for(let lane=0;lane<2;lane++){if(!pocketOpen(side,lane))continue;const r=pocketRect(side,lane);if(x>=r.x0&&x<=r.x1&&y>=r.y0&&y<=r.y1)return true;}return false;}
 function legalDeploy(side,x,y){if(y>368&&y<432)return false;for(const t of G.towers){if(!t.dead){const dx=x-t.x,dy=y-t.y;if(dx*dx+dy*dy<60*60)return false;}}const ownHalf=side===G.view?(side===0?y>=400:y<400):(side===0?y>=400:y<400);if(ownHalf&&y>30&&y<770)return true;return inPocket(side,x,y);}
-function mkHand(deck){const q=[...deck].sort(()=>Math.random()-.5);return{el:5,cards:q.slice(0,4),queue:q.slice(4),next:q[4]||q[0],sel:-1,spell:null};}
+function mkHand(deck){const q=[...deck].sort(()=>Math.random()-.5);return{el:5,cards:q.slice(0,4),queue:q.slice(4),next:q[4]||q[0],sel:-1};}
 function lvlScale(l){return Math.pow(1.12,l-1);}
 class Ent{
 constructor(k,side,lvl,x,y,gearId){const d=UNIT_DB[k];this.k=k;this.side=side;this.lvl=lvl;const s=lvlScale(lvl);let gid=(gearId&&GEAR_DB[gearId])?gearId:null;if(!gid){const g=side===G.view?(player.units[k]&&player.units[k].g):(G.foe&&G.foe.gear&&G.foe.gear[k]);if(g&&GEAR_DB[g])gid=g;}this.gear=gid;const gr=gid?GEAR_DB[gid]:{};this.max=d.hp*s*(gr.hp||1);this.hp=this.max;this.dmg=d.dmg*s*(gr.dmg||1);this.rng=d.rng+(gr.rng||0);this.spd=d.spd*(gr.spd||1);this.proj=d.proj;this.role=d.role||"melee";this.healAmt=(d.heal||0)*s;this.atkDelay=1/(d.atkSpd||1);this.cool=.4;this.t=Math.random()*10;this.age=0;this.x=x;this.y=y;this.moved=0;this.chargeUsed=false;this.stabUsed=false;this.slowT=0;this.slowF=1;this.burnT=0;this.burnDps=0;this._bt=0;this.flash=0;this.atkA=0;this.hitT=0;this.wind=0;this.vx=0;this.vy=0;this.px=x;this.py=y;}
@@ -464,15 +450,7 @@ const played=h.cards[hi];h.cards[hi]=h.queue.shift();h.queue.push(played);h.next
 if(side===G.view)questBump("play",1);
 if(G.mode==="online"&&!G.isHost&&side===G.view)netSend({t:"spawn",key:k,x:Math.round(x),y:Math.round(y)});
 return true;}
-/* Zauber: kein Ent, Wirkung sofort via dealDmg-Loop */
-function legalSpell(x,y){return x>24&&x<516&&y>30&&y<770;}
-function aoeAt(side,x,y,r,dmg,towerF,ak){[...G.ents].forEach(e=>{if(e.hp<=0)return;const dx=e.x-x,dy=e.y-y;if(dx*dx+dy*dy<=r*r&&e.side!==side)dealDmg(e,dmg,side,x,y,ak,1);});G.towers.forEach(t=>{if(t.dead)return;const dx=t.x-x,dy=t.y-y;if(dx*dx+dy*dy<=r*r)dealDmg(t,dmg*(towerF==null?1:towerF),side,x,y,ak,1);});}
-function castSpell(side,id,x,y){const h=G.hands[side];const sp=SPELL_DB[id];if(!sp||h.el<sp.cost||!legalSpell(x,y))return false;
-h.el-=sp.cost;G.spent[side]=(G.spent[side]||0)+sp.cost;h.spell=null;h.sel=-1;
-if(id==="frost"){let n=0;[...G.ents].forEach(e=>{if(e.hp<=0||e.side===side)return;const dx=e.x-x,dy=e.y-y;if(dx*dx+dy*dy<=sp.r*sp.r){e.slowT=sp.slow.dur;e.slowF=sp.slow.f;n++;}});for(let i=0;i<10;i++)addP(x+(Math.random()*80-40),y+(Math.random()*60-30),"#4fc3f7",4,120);addF(x,y-30,"❄️ FROST! ("+n+")","#4fc3f7");SFX.freeze();}
-else if(id==="pfeile"){aoeAt(side,x,y,sp.r,sp.dmg,sp.towerF,id);for(let i=0;i<2;i++)G.pending.push({t:.18*(i+1),tick:{side,x,y,r:sp.r,dmg:sp.dmg,towerF:sp.towerF,ak:id}});for(let i=0;i<8;i++)addP(x+(Math.random()*100-50),y-40,"#fff",3,200);addF(x,y-30,"🏹 PFEILE!","#fff");SFX.hit();G.shake=Math.min(8,G.shake+2);}
-else{aoeAt(side,x,y,sp.r,sp.dmg,sp.towerF,id);for(let i=0;i<16;i++)addP(x+(Math.random()*90-45),y+(Math.random()*70-35),i%2?"#ff9800":"#ff5722",5,260);addF(x,y-40,"🔥 FEUERBALL!","#ff9800");SFX.boom();G.shake=Math.min(14,G.shake+7);}
-if(side===G.view)questBump("play",1);refreshSel();updHint();return true;}
+
 function plvl(k){return player.units[k]?player.units[k].l:1;}
 function playCardAI(side,hi,x,y){const h=G.hands[side];const k=h.cards[hi];if(!k||h.el<UNIT_DB[k].cost||G.ents.length>=CFG.MAX_ENTS)return false;
 if(y>368&&y<432)y=side===1?360:440;
@@ -484,10 +462,9 @@ G._ai=(G._ai||0)+dt;
 const arch=foe.arch||"chaos";
 const foes=G.ents.filter(e=>e.side===1-side&&e.hp>0);
 const threat=foes.find(e=>side===1?e.y<300:e.y>500);
-aiSpell(side,foe);
 const gateBase=arch==="rush"?(threat?.45:1.0):(arch==="tank"?(threat?.7:1.9):(threat?.6:1.5));
 if(G._ai<gateBase*(1.2-foe.aggro*.6))return;G._ai=0;
-const afford=h.cards.map((k,i)=>({k,i})).filter(o=>o.k&&!isSpell(o.k)&&UNIT_DB[o.k].cost<=h.el&&!(UNIT_DB[o.k].role==="healer"&&!G.ents.some(e=>e.side===side&&e.hp>0&&e.hp/e.max<.85)));
+const afford=h.cards.map((k,i)=>({k,i})).filter(o=>o.k&&UNIT_DB[o.k].cost<=h.el&&!(UNIT_DB[o.k].role==="healer"&&!G.ents.some(e=>e.side===side&&e.hp>0&&e.hp/e.max<.85)));
 if(!afford.length)return;
 if(arch==="tank"&&h.el<8&&!threat&&Math.random()<.7)return;
 if((arch==="tank"||h.el>=8)&&h.el>=7&&Math.random()<foe.aggro){const tanks=afford.filter(o=>UNIT_DB[o.k].role==="tank");const pick=tanks[0]||afford[0];const y=side===1?300:500;const x=120+Math.random()*300;
@@ -498,14 +475,6 @@ let o;
 if(arch==="rush"){const fast=[...afford].sort((a,b)=>UNIT_DB[b.k].spd-UNIT_DB[a.k].spd);o=fast[Math.floor(Math.random()*Math.min(2,fast.length))];const laneFar=Math.random()<.5;playCardAI(side,o.i,laneFar?(Math.random()<.5?80:460):120+Math.random()*300,side===1?230+Math.random()*110:460+Math.random()*110);return;}
 if(arch==="control"){const back=afford.filter(o=>UNIT_DB[o.k].rng>250);o=(back.length?back:afford)[Math.floor(Math.random()*(back.length?back.length:afford.length))];playCardAI(side,o.i,120+Math.random()*300,side===1?180+Math.random()*100:520+Math.random()*100);return;}
 o=afford[Math.floor(Math.random()*afford.length)];playCardAI(side,o.i,120+Math.random()*300,side===1?200+Math.random()*140:460+Math.random()*140);}
-function aiSpell(side,foe){const h=G.hands[side];if(G.time<20)return;G._spellT=(G._spellT||0);if(G.time-G._spellT<7)return;
-const foes=G.ents.filter(e=>e.side!==side&&e.hp>0&&!e.isTower);
-const centroid={x:0,y:0};let cluster=null;
-if(foes.length>=3){let bx=0,by=0;foes.forEach(e=>{bx+=e.x;by+=e.y;});bx/=foes.length;by/=foes.length;const n=foes.filter(e=>{const dx=e.x-bx,dy=e.y-by;return dx*dx+dy*dy<=110*110;}).length;if(n>=3)cluster={x:bx,y:by,n};}
-const threat=foes.filter(e=>{const t=G.towers.find(t=>t.side===side&&t.kind==="prin"&&!t.dead);return t&&Math.hypot(e.x-t.x,e.y-t.y)<220;});
-if(cluster&&h.el>=4&&Math.random()<.5+foe.aggro*.4){if(castSpell(side,"feuerball",cluster.x,cluster.y)){G._spellT=G.time;kf("🔴 "+foe.name+": Feuerball!");return;}}
-if(threat.length>=2&&h.el>=3&&Math.random()<foe.aggro){let sx=0,sy=0;threat.forEach(e=>{sx+=e.x;sy+=e.y;});if(castSpell(side,"frost",sx/threat.length,sy/threat.length)){G._spellT=G.time;kf("🔴 "+foe.name+": Frost!");return;}}
-const weak=foes.filter(e=>e.hp<160);if(weak.length>=2&&h.el>=3&&Math.random()<.4){let sx=0,sy=0;weak.forEach(e=>{sx+=e.x;sy+=e.y;});if(castSpell(side,"pfeile",sx/weak.length,sy/weak.length)){G._spellT=G.time;kf("🔴 "+foe.name+": Pfeile!");}}}
 /* Setup + Starts (Loop-Guard via seq) */
 function setupMatch(mode,foe){const myDeck=[...player.deck];const arch=ARCH_IDS[Math.floor(Math.random()*4)];
 const fd=foe.deck||[...ARCH[arch]];
@@ -535,23 +504,21 @@ function playAgain(){document.getElementById('endov').classList.remove('show');i
 function showGame(){document.getElementById('menu-screen').classList.remove('active');document.getElementById('game-screen').classList.add('active');sizeCanvas();}
 /* Hände-UI */
 function cardHTML(k,small){const d=UNIT_DB[k];const gr=player.units[k]&&player.units[k].g&&GEAR_DB[player.units[k].g]?GEAR_DB[player.units[k].g].icon:"";return '<div class="cost">'+d.cost+'</div>'+(gr?'<div class="gbadge" style="top:auto;bottom:-7px;right:-7px">'+gr+'</div>':'')+'<img src="'+IMAGES[k].src+'" onerror="this.outerHTML=\'<div style=font-size:'+(small?26:32)+'px>'+d.icon+'</div>\'"><div class="nm">'+d.name+'</div>';}
-function buildHands(){const w=document.getElementById('hand');w.innerHTML='';G.hands[G.view].cards.forEach((k,i)=>{const c=document.createElement('div');c.className='gcard off';c.id='hc'+i;c.onclick=()=>selCard(G.view,i);c.innerHTML=cardHTML(k);w.appendChild(c);});const nx=document.createElement('div');nx.className='gcard';nx.style.opacity=.65;nx.id='hnext';nx.innerHTML='<div class="nm">NEXT</div><div style="font-size:26px">'+(G.hands[G.view].next?UNIT_DB[G.hands[G.view].next].icon:"?")+'</div>';w.appendChild(nx);buildSpells();}
-function buildSpells(){const w=document.getElementById('spellbar');if(!w||w.children.length===3)return;w.innerHTML='';SPELL_IDS.forEach(id=>{const s=SPELL_DB[id];const c=document.createElement('div');c.className='scard off';c.id='sp-'+id;c.onclick=()=>selSpell(G.view,id);c.innerHTML='<div class="cost">'+s.cost+'</div><div class="si">'+s.icon+'</div><div class="sn">'+s.name+'</div>';w.appendChild(c);});buildEmotes();}
+function buildHands(){const w=document.getElementById('hand');w.innerHTML='';G.hands[G.view].cards.forEach((k,i)=>{const c=document.createElement('div');c.className='gcard off';c.id='hc'+i;c.onclick=()=>selCard(G.view,i);c.innerHTML=cardHTML(k);w.appendChild(c);});const nx=document.createElement('div');nx.className='gcard';nx.style.opacity=.65;nx.id='hnext';nx.innerHTML='<div class="nm">NEXT</div><div style="font-size:26px">'+(G.hands[G.view].next?UNIT_DB[G.hands[G.view].next].icon:"?")+'</div>';w.appendChild(nx);buildEmotes();}
 function buildEmotes(){const w=document.getElementById('emotes');if(!w||w.children.length)return;["😂","👍","😡","🔥"].forEach(e=>{const b=document.createElement('button');b.innerText=e;b.onclick=()=>sendEmote(e);w.appendChild(b);});}
 function sendEmote(e){if(!G||G.over||G.paused)return;const now=performance.now();if(G._emT&&now-G._emT<3000){toast("⏳ Langsam mit den Emotes!");return;}G._emT=now;showEmote(e,true);if(G.mode==="online"&&conn&&conn.open){try{conn.send({t:"emote",e});}catch(err){}}}
 function showEmote(e,mine){kf((mine?"🔵 DU: ":"🔴 GEGNER: ")+e);const k=G.towers.find(t=>t.side===(mine?G.view:1-G.view)&&t.kind==="king"&&!t.dead);if(k)addF(k.x,k.y-70,e,"#fff");SFX.spawn();}
-function clearSpells(){const w=document.getElementById('spellbar');if(w)w.innerHTML='';}
 function buildTopHand(){const w=document.getElementById('topHand');w.innerHTML='';G.hands[1].cards.forEach((k,i)=>{const c=document.createElement('div');c.className='gcard off';c.id='tc'+i;c.onclick=()=>selCard(1,i);c.innerHTML=cardHTML(k,true);w.appendChild(c);});}
-function selCard(side,i){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[side];const ck=h.cards[i];if(!ck||!getCard(ck))return;if(h.el<getCard(ck).cost){if(side===G.view)toast("Brauche "+getCard(ck).cost+" 💧!");return;}h.sel=(h.sel===i?-1:i);h.spell=null;SFX.spawn();refreshSel();updHint();}
-function selSpell(side,id){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[side];const sp=SPELL_DB[id];if(!sp)return;if(h.el<sp.cost){if(side===G.view)toast("Brauche "+sp.cost+" 💧!");return;}h.spell=(h.spell===id?null:id);h.sel=-1;SFX.spawn();refreshSel();updHint();}
-function refreshSel(){for(let i=0;i<4;i++){const a=document.getElementById('hc'+i);if(a)a.classList.toggle('sel',G.hands[G.view].sel===i);}SPELL_IDS.forEach(id=>{const a=document.getElementById('sp-'+id);if(a)a.classList.toggle('sel',G.hands[G.view].spell===id);});}
-function updHint(){const el=document.getElementById('hint');if(!el||!G)return;{const h=G.hands[G.view];if(h.spell&&SPELL_DB[h.spell]){el.innerText=SPELL_DB[h.spell].icon+" "+SPELL_DB[h.spell].name+": überall hin tippen! (r="+SPELL_DB[h.spell].r+")";return;}const k=h.sel>=0?h.cards[h.sel]:null;const pk=inPocket(G.view,270,G.view===0?600:200);el.innerText=k?(getCard(k).icon+" "+getCard(k).name+counterTip(k)+(pk?": Pocket frei — vorne deployen!":": tippe deine Hälfte!")):"Karte wählen → eigene Hälfte tippen!";}}
+function selCard(side,i){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[side];const ck=h.cards[i];if(!ck||!getCard(ck))return;if(h.el<getCard(ck).cost){if(side===G.view)toast("Brauche "+getCard(ck).cost+" 💧!");return;}h.sel=(h.sel===i?-1:i);SFX.spawn();refreshSel();updHint();}
+function refreshSel(){for(let i=0;i<4;i++){const a=document.getElementById('hc'+i);if(a)a.classList.toggle('sel',G.hands[G.view].sel===i);}}
+function updHint(){const el=document.getElementById('hint');if(!el||!G)return;{const h=G.hands[G.view];const k=h.sel>=0?h.cards[h.sel]:null;const pk=inPocket(G.view,270,G.view===0?600:200);el.innerText=k?(getCard(k).icon+" "+getCard(k).name+counterTip(k)+(pk?": Pocket frei — vorne deployen!":": tippe deine Hälfte!")):"Karte wählen → eigene Hälfte tippen!";}}
 /* Input mit korrektem Letterbox-Mapping */
 function toArena(cx,cy){const r=cvs.getBoundingClientRect();const vp=G&&G.vp?G.vp:{s:r.width/CFG.AW,ox:0,oy:0};const sx=(cx-r.left-vp.ox)/vp.s,sy=(cy-r.top-vp.oy)/vp.s;return{x:Math.max(0,Math.min(CFG.AW,sx)),y:Math.max(0,Math.min(CFG.AH,sy))};}
 function tapDeploy(cx,cy){if(!G||!G.active||G.over||G.paused||G.phase!=="fight")return;ac();const p=toArena(cx,cy);const y=G.flip?CFG.AH-p.y:p.y,x=G.flip?CFG.AW-p.x:p.x;
-const me=G.view;
-if(G.mode==="online"&&!G.isHost){const h=G.hands[me];if(!h.spell&&h.sel<0){const tw=G.towers.find(t=>t.side===me&&!t.dead&&Math.hypot(t.x-x,t.y-y)<70);if(tw){G.rings.push({x:tw.x,y:tw.y,r:tw.rng,t:1.6});SFX.spawn();}return;}if(h.spell&&SPELL_DB[h.spell]){if(!legalSpell(x,y)){toast("Außerhalb der Arena!");return;}const id=h.spell;if(h.el<SPELL_DB[id].cost)return;h.el-=SPELL_DB[id].cost;G.spent[me]=(G.spent[me]||0)+SPELL_DB[id].cost;const sid=++G.sid;G.ghosts.push({id:sid,key:id,x,y,t:2,spell:true});G.pendAck[sid]={key:id,cost:SPELL_DB[id].cost};markSpawn(x,y,me);netSend({t:"spell",id:sid,key:id,x:Math.round(x),y:Math.round(y)});h.spell=null;h.sel=-1;refreshSel();updHint();return;}if(h.sel<0)return;if(!legalDeploy(me,x,y)){toast("Nur deine Hälfte!");addF(x,y,"✖","#ff5252");return;}const k=h.cards[h.sel];if(h.el<UNIT_DB[k].cost)return;h.el-=UNIT_DB[k].cost;G.spent[me]=(G.spent[me]||0)+UNIT_DB[k].cost;const sid=++G.sid;G.ghosts.push({id:sid,key:k,x,y,t:2});G.pendAck[sid]={key:k,cost:UNIT_DB[k].cost};markSpawn(x,y,me);netSend({t:"spawn",id:sid,key:k,x:Math.round(x),y:Math.round(y)});h.sel=-1;refreshSel();updHint();return;}
-const h=G.hands[me];if(!h.spell&&h.sel<0){const tw=G.towers.find(t=>t.side===me&&!t.dead&&Math.hypot(t.x-x,t.y-y)<70);if(tw){G.rings.push({x:tw.x,y:tw.y,r:tw.rng,t:1.6});SFX.spawn();return;}toast(me===0?"Karte wählen! ⬆️":"Karte wählen! ⬇️");return;}if(h.spell&&SPELL_DB[h.spell]){if(!legalSpell(x,y)){toast("Außerhalb der Arena!");addF(x,y,"✖","#ff5252");return;}const id=h.spell;if(castSpell(me,id,x,y))buildSpells();refreshSel();return;}if(h.sel<0)return;if(!legalDeploy(me,x,y)){toast(me===0?"Nur deine Hälfte / Pocket! ⬆️":"Nur deine Hälfte / Pocket! ⬇️");addF(x,y,"✖","#ff5252");return;}
+const me=G.view,h=G.hands[me];
+if(h.sel<0){const tw=G.towers.find(t=>t.side===me&&!t.dead&&Math.hypot(t.x-x,t.y-y)<70);if(tw){G.rings.push({x:tw.x,y:tw.y,r:tw.rng,t:1.6});SFX.spawn();return;}if(G.mode==="online"&&!G.isHost)return;toast(me===0?"Karte wählen! ⬆️":"Karte wählen! ⬇️");return;}
+if(!legalDeploy(me,x,y)){toast(G.mode==="online"&&!G.isHost?"Nur deine Hälfte!":(me===0?"Nur deine Hälfte / Pocket! ⬆️":"Nur deine Hälfte / Pocket! ⬇️"));addF(x,y,"✖","#ff5252");return;}
+if(G.mode==="online"&&!G.isHost){const k=h.cards[h.sel];if(h.el<UNIT_DB[k].cost)return;h.el-=UNIT_DB[k].cost;G.spent[me]=(G.spent[me]||0)+UNIT_DB[k].cost;const sid=++G.sid;G.ghosts.push({id:sid,key:k,x,y,t:2});G.pendAck[sid]={key:k,cost:UNIT_DB[k].cost};markSpawn(x,y,me);netSend({t:"spawn",id:sid,key:k,x:Math.round(x),y:Math.round(y)});h.sel=-1;refreshSel();updHint();return;}
 if(playCard(me,h.sel,x,y))buildHands();refreshSel();}
 /* Update */
 function finishBySide(side,draw){if(!G||G.over)return;endGame(G.view===side&&!draw,draw);}
@@ -561,7 +528,7 @@ G._musT=(G._musT||0)+dt;while(G._musT>.24){G._musT-=.24;musStep();}
 if(ot&&!G.annOT){G.annOT=true;announce("⚡ DOPPEL-ELIXIER!","Beide laden 2x",1500);SFX.horn();}
 if(sd&&!G.annSD){G.annSD=true;announce("💀 SUDDEN DEATH!","Türme bluten — erster 👑 gewinnt!",1800);SFX.horn();}
 // Timer-Queue (Kombo) statt setTimeout
-for(let i=G.pending.length-1;i>=0;i--){const q=G.pending[i];q.t-=dt;if(q.t>0)continue;G.pending.splice(i,1);if(G.over||G.phase!=="fight")continue;if(q.tick){aoeAt(q.tick.side,q.tick.x,q.tick.y,q.tick.r,q.tick.dmg,q.tick.towerF,q.tick.ak);for(let j=0;j<4;j++)addP(q.tick.x+(Math.random()*80-40),q.tick.y-30,"#fff",3,160);}else playCardAI(q.side,q.hi,q.x,q.y);}
+for(let i=G.pending.length-1;i>=0;i--){const q=G.pending[i];q.t-=dt;if(q.t>0)continue;G.pending.splice(i,1);if(G.over||G.phase!=="fight")continue;playCardAI(q.side,q.hi,q.x,q.y);}
 G.marks.forEach(m=>m.t-=dt);G.marks=G.marks.filter(m=>m.t>0);
 G.rings.forEach(m=>m.t-=dt);G.rings=G.rings.filter(m=>m.t>0);
 if(sd){G._sud=(G._sud||0)+dt;if(G._sud>=1){G._sud=0;G.towers.forEach(t=>{if(!t.dead&&t.hp>1){t.hp=Math.max(1,t.hp-30);}});}}
@@ -594,7 +561,6 @@ if(G.left<=0&&!G.over){if(G.c0!==G.c1)finishBySide(G.c0>G.c1?0:1,false);
 else{const h0=G.towers.filter(t=>t.side===0).reduce((a,t)=>a+Math.max(0,t.hp),0),h1=G.towers.filter(t=>t.side===1).reduce((a,t)=>a+Math.max(0,t.hp),0);if(Math.abs(h0-h1)<1)endGame(false,true);else finishBySide(h0>h1?0:1,false);}}}
 /* Karten-Refresh */
 function refreshCards(){if(!G)return;const hv=G.hands[G.view];for(let i=0;i<4;i++){const c=document.getElementById('hc'+i);if(!c)continue;const k=hv.cards[i];if(!k||!getCard(k))continue;const ok=hv.el>=getCard(k).cost;c.classList.toggle('rdy',ok);c.classList.toggle('off',!ok);}
-SPELL_IDS.forEach(id=>{const c=document.getElementById('sp-'+id);if(!c)return;const ok=hv.el>=SPELL_DB[id].cost;c.classList.toggle('rdy',ok);c.classList.toggle('off',!ok);});
 const nx=document.getElementById('hnext');if(nx&&hv.next&&UNIT_DB[hv.next])nx.querySelector('div:nth-child(2)').innerText=UNIT_DB[hv.next].icon;}
 /* ===== ARENA-RENDERING (2D-Stil) ===== */
 /* ===== ARENA-STATIC: 1x pro Match cachen, Kit-Farben aus g1/g2 ===== */
@@ -651,8 +617,6 @@ ctx.fillStyle=kit.foam;for(let x=0;x<CFG.AW;x+=36)ctx.fillRect(x+((wt*34)%36),39
 const hasSel=G.hands&&G.hands[G.view].sel>=0;
 ctx.strokeStyle=hasSel?"rgba(255,235,59,.85)":"rgba(255,255,255,.45)";ctx.setLineDash([8,8]);ctx.lineWidth=hasSel?3:2;ctx.beginPath();ctx.moveTo(0,400);ctx.lineTo(CFG.AW,400);ctx.stroke();ctx.setLineDash([]);
 ctx.fillStyle=hasSel?"rgba(120,255,120,.16)":"rgba(120,255,120,.08)";if(G.view===0)ctx.fillRect(0,400,CFG.AW,400);else ctx.fillRect(0,0,CFG.AW,400);
-const selSp=G.hands&&G.hands[G.view].spell&&SPELL_DB[G.hands[G.view].spell]?SPELL_DB[G.hands[G.view].spell]:null;
-if(selSp&&G.place){const py=fy(G.place.y),ok=legalSpell(G.place.x,G.place.y),col=ok?"105,240,174":"255,82,82";ctx.fillStyle="rgba("+col+",.12)";ctx.beginPath();ctx.arc(G.place.x,py,selSp.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba("+col+",.9)";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(G.place.x,py,selSp.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([5,5]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(G.place.x-selSp.r,py);ctx.lineTo(G.place.x+selSp.r,py);ctx.moveTo(G.place.x,py-selSp.r);ctx.lineTo(G.place.x,py+selSp.r);ctx.stroke();ctx.setLineDash([]);ctx.font="28px serif";ctx.textAlign="center";ctx.globalAlpha=.95;ctx.fillText(selSp.icon,G.place.x,py+10);ctx.globalAlpha=1;}
 const selU=G.hands&&G.hands[G.view].sel>=0?UNIT_DB[G.hands[G.view].cards[G.hands[G.view].sel]]:null;
 if(selU&&G.place){const py=fy(G.place.y),ok=legalDeploy(G.view,G.place.x,G.place.y),col=ok?"105,240,174":"255,82,82",key=G.hands[G.view].cards[G.hands[G.view].sel];ctx.fillStyle="rgba("+col+",.10)";ctx.beginPath();ctx.arc(G.place.x,py,Math.min(selU.rng,400),0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba("+col+",.35)";ctx.lineWidth=1.5;ctx.setLineDash([6,6]);ctx.beginPath();ctx.arc(G.place.x,py,Math.min(selU.rng,400),0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="rgba("+col+",.22)";ctx.strokeStyle="rgba("+col+",.95)";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(G.place.x,py-24,30,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=.9;if(imgOK(IMAGES[key]))ctx.drawImage(IMAGES[key],G.place.x-32,py-64,64,64);else{ctx.font="42px serif";ctx.textAlign="center";ctx.fillText(selU.icon,G.place.x,py-8);}ctx.globalAlpha=1;}
 for(let lane=0;lane<2;lane++){if(pocketOpen(G.view,lane)){const r=pocketRect(G.view,lane);ctx.fillStyle="rgba(255,235,59,.16)";ctx.fillRect(r.x0,r.y0,r.x1-r.x0,r.y1-r.y0);ctx.strokeStyle="rgba(255,235,59,.7)";ctx.setLineDash([6,5]);ctx.lineWidth=2;ctx.strokeRect(r.x0,r.y0,r.x1-r.x0,r.y1-r.y0);ctx.setLineDash([]);ctx.font="bold 11px sans-serif";ctx.fillStyle="#ffeb3b";ctx.textAlign="center";ctx.fillText("POCKET",(r.x0+r.x1)/2,r.y0+14);}}
@@ -756,7 +720,7 @@ buildHands();beginLoop();conn.send({t:"hello",deck:G.hands[0].cards.concat(G.han
 if(!G)return;
 const ack=(id,ok)=>{if(conn&&conn.open){try{conn.send({t:"ack",id,ok:ok?1:0});}catch(e){}}};
 if(m.t==="emote"){showEmote(m.e,false);return;}
-if(m.t==="spell"){const sp=SPELL_DB[m.key];const h=G.hands[1];if(!sp||h.el<sp.cost||m.x<24||m.x>516||m.y<30||m.y>770){ack(m.id,false);return;}if(castSpell(1,m.key,Math.max(24,Math.min(516,m.x)),Math.max(30,Math.min(770,m.y))))ack(m.id,true);else ack(m.id,false);return;}if(m.t==="spawn"){const h=G.hands[1];const hi=h.cards.indexOf(m.key);if(hi<0||!getCard(m.key)||h.el<getCard(m.key).cost){ack(m.id,false);return;}if(!legalDeploy(1,m.x,m.y)||G.ents.length>=CFG.MAX_ENTS){ack(m.id,false);return;}h.el-=getCard(m.key).cost;G.spent[1]=(G.spent[1]||0)+getCard(m.key).cost;ack(m.id,true);
+if(m.t==="spawn"){const h=G.hands[1];const hi=h.cards.indexOf(m.key);if(hi<0||!getCard(m.key)||h.el<getCard(m.key).cost){ack(m.id,false);return;}if(!legalDeploy(1,m.x,m.y)||G.ents.length>=CFG.MAX_ENTS){ack(m.id,false);return;}h.el-=getCard(m.key).cost;G.spent[1]=(G.spent[1]||0)+getCard(m.key).cost;ack(m.id,true);
 G.ents.push(new Ent(m.key,1,1,Math.max(24,Math.min(516,m.x)),Math.max(40,Math.min(CFG.AH-40,m.y))));markSpawn(m.x,m.y,1);SFX.deploy(getCard(m.key).role||"melee");const p=h.cards[hi];h.cards[hi]=h.queue.shift();h.queue.push(p);h.next=h.queue[0];}});
 conn.on("close",()=>{if(G&&!G.over){announce("📡 VERBINDUNG WEG","Gegner getrennt",2000);endGame(true,false);}});}
 function netJoin(){if(typeof Peer==="undefined"){netStat("❌ Offline.");return;}const code=document.getElementById('roomIn').value.trim().toUpperCase();if(code.length<4){netStat("Code eingeben!");return;}
@@ -767,11 +731,11 @@ G.isHost=false;G.view=1;G.flip=true;const hd=(m.deck||[]).filter(k=>UNIT_DB[k]);
 G.hands[0]=mkHand(hd);G.hands[1]=mkHand([...player.deck]);
 document.getElementById('eName').innerText="HOST 👑";document.getElementById('pName').innerText="DU (GAST)";document.getElementById('waveLbl').innerText="🌐 ONLINE 1:1";document.getElementById('topHand').classList.remove('on');
 uiVs("ONLINE-DUELL","Gespiegelt · deine Hälfte ist unten","HOST");
-buildHands();buildSpells();G.active=true;G.lastT=performance.now();guestLoop(performance.now(),G.seq);return;}
+buildHands();G.active=true;G.lastT=performance.now();guestLoop(performance.now(),G.seq);return;}
 if(m.t==="snap"&&G){applySnap(m);}if(m.t==="emote"&&G&&!G.over){showEmote(m.e,false);}if(m.t==="ack"&&G&&!G.isHost){const p=G.pendAck[m.id];if(p){delete G.pendAck[m.id];G.ghosts=G.ghosts.filter(g=>g.id!==m.id);if(!m.ok){G.hands[G.view].el=Math.min(10,G.hands[G.view].el+p.cost);G.spent[G.view]=Math.max(0,(G.spent[G.view]||0)-p.cost);toast("⛔ Zug abgelehnt!");}}}if(m.t==="end"&&G&&!G.over){endGame(m.side===G.view&&!m.draw,m.draw);}});});
 peer.on("error",e=>netStat("❌ "+e.type+" — Code prüfen!"));}
 function buildHandsGuest(){const hv=G.hands[G.view];const w=document.getElementById('hand');const sig=hv.cards.join(",");if(w._sig===sig&&w.children.length)return;w._sig=sig;w.innerHTML='';hv.cards.forEach((k,i)=>{const c=document.createElement('div');c.className='gcard off';c.id='hc'+i;c.onclick=()=>guestSel(i);c.innerHTML=cardHTML(k);w.appendChild(c);});}
-function guestSel(i){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[G.view];h.sel=(h.sel===i?-1:i);h.spell=null;for(let j=0;j<4;j++){const a=document.getElementById('hc'+j);if(a)a.classList.toggle('sel',h.sel===j);}refreshSel();}
+function guestSel(i){if(!G||G.over||G.paused||G.phase!=="fight")return;const h=G.hands[G.view];h.sel=(h.sel===i?-1:i);for(let j=0;j<4;j++){const a=document.getElementById('hc'+j);if(a)a.classList.toggle('sel',h.sel===j);}refreshSel();}
 function applySnap(m){if(!G)return;
 if(!G.isHost&&G.ghosts.length){G.ghosts=G.ghosts.filter(g=>{const hit=m.e.some(a=>a[0]===g.key&&Math.abs(a[3]-g.x)<40&&Math.abs(a[4]-g.y)<40);if(hit){delete G.pendAck[g.id];return false;}return g.t>0;});}
 G.ents=m.e.map(a=>{const e=new Ent(a[0],a[1],a[2],a[3],a[4],a[6]||null);e.hp=a[5];return e;});m.tw.forEach((hp,i)=>{if(G.towers[i]&&!G.towers[i].dead){G.towers[i].hp=hp;if(hp<=0)G.towers[i].dead=true;}});G.towers.forEach(t=>{if(t.kind==="king"&&!t.active){if(t.hp<t.max)t.active=true;const own=G.towers.some(q=>q.side===t.side&&q.kind==="prin"&&q.dead);if(own)t.active=true;}});
@@ -842,12 +806,11 @@ function merge(k){if(player.units[k].c<2)return;player.units[k].c-=2;player.unit
 function gddHTML(){let rows=Object.keys(UNIT_DB).map(k=>{const d=UNIT_DB[k];const fx=[d.heal?"Heal "+d.heal:"",d.burn?"Burn":"",d.slow?"Slow":"",d.deathBoom?"Boom":"",d.charge?"Charge":"",d.backstab?"Stab":""].filter(Boolean).join(",");return "<tr><td>"+d.icon+" "+d.name+"</td><td>"+d.cost+"</td><td>"+d.hp+"</td><td>"+d.dmg+"</td><td>"+d.rng+"</td><td>"+d.role+"</td><td>"+(fx||"–")+"</td></tr>";}).join("");
 let ar=ARENAS.map((a,i)=>"<tr><td>"+(i+1)+". "+a.icon+" "+a.name+"</td><td>"+a.need+"</td><td>Deko</td></tr>").join("");
 let gr=Object.keys(GEAR_DB).map(id=>{const g=GEAR_DB[id];return "<tr><td>"+g.icon+" "+g.name+"</td><td>"+g.slot+"</td><td>"+g.cost+"🪙</td><td>"+gearDesc(id)+"</td></tr>";}).join("");
-let sr=SPELL_IDS.map(id=>{const s=SPELL_DB[id];const fx=id==="frost"?("Slow "+Math.round((1-s.slow.f)*100)+"%, "+s.slow.dur+"s"):(s.dmg+(s.ticks?"×"+s.ticks:"")+" DMG");return "<tr><td>"+s.icon+" "+s.name+"</td><td>"+s.cost+"💧</td><td>r="+s.r+"</td><td>"+fx+"</td></tr>";}).join("");
 return "<h3>🎯 Konzept</h3>Vertikales 1-gegen-1-Arena-Duell im Browser (Mobile-first, eine Datei). Du unten, Gegner oben. Fluss mit 2 Brücken trennt die Hälften. Wer nach 3:00 mehr Kronen hat, gewinnt. Prinzessin = 1 👑, König = Sofort-Sieg (3 👑). König schläft (💤) bis Schaden oder Turm-Fall. Pocket: Nach Turm-Fall vorne in der goldenen Zone deployen. Sudden Death ab 2:30: Türme bluten."
-+"<h3>🃏 Mechanik</h3><b>Hand:</b> 4 + Nächste aus 8er-Deck, gespielte Karte rotiert ans Ende. <b>Elixier:</b> 1/2.8s, max 10, Start 5, ab 2:00 doppelt. <b>Kill:</b> +1 Elixier nur bei Rückstand (Comeback). <b>Deploy:</b> eigene Hälfte + Pocket nach Turm-Fall, nicht auf Fluss/Türme. <b>KI:</b> Rush/Tank/Control/Chaos-Stile, Konter, Kombo ab 7 Elixier, Zauber ab 20s (max alle 7s). <b>Turbo:</b> 2x-Tempo nur im KI-Duell. <b>Sound:</b> Synth-Musik + Rollen-Sounds (Mute 🔊). <b>Türme:</b> schießen schwächstes Ziel (König erst nach Aktivierung), Prinzessin 1400/52, König 2400/65. <b>Konter:</b> 🛡️>🎯>🗡️>🛡️ (Heiler supportet). <b>Tipp:</b> eigenen Turm antippen = Reichweite zeigen."
++"<h3>🃏 Mechanik</h3><b>Hand:</b> 4 + Nächste aus 8er-Deck, gespielte Karte rotiert ans Ende. <b>Elixier:</b> 1/2.8s, max 10, Start 5, ab 2:00 doppelt. <b>Kill:</b> +1 Elixier nur bei Rückstand (Comeback). <b>Deploy:</b> eigene Hälfte + Pocket nach Turm-Fall, nicht auf Fluss/Türme. <b>KI:</b> Rush/Tank/Control/Chaos-Stile, Konter, Kombo ab 7 Elixier, setzt ausschließlich Einheiten ein. <b>Turbo:</b> 2x-Tempo nur im KI-Duell. <b>Sound:</b> Synth-Musik + Rollen-Sounds (Mute 🔊). <b>Türme:</b> schießen schwächstes Ziel (König erst nach Aktivierung), Prinzessin 1400/52, König 2400/65. <b>Konter:</b> 🛡️>🎯>🗡️>🛡️ (Heiler supportet). <b>Tipp:</b> eigenen Turm antippen = Reichweite zeigen."
 +"<h3>🏟️ Arenen</h3><table class='gdd-table'><tr><th>Arena</th><th>Siege</th><th>Bonus</th></tr>"+ar+"</table>"
 +"<h3>👹 Monster (20, Basiswerte Lvl 1, +12 %/Lvl)</h3><table class='gdd-table'><tr><th>Unit</th><th>💧</th><th>❤️</th><th>🗡️</th><th>🎯</th><th>Rolle</th><th>FX</th></tr>"+rows+"</table>"
-+"<h3>✨ Zauber (feste Leiste, überall einsetzbar)</h3><table class='gdd-table'><tr><th>Zauber</th><th>Kosten</th><th>Radius</th><th>Wirkung</th></tr>"+sr+"</table>"
+
 +"<h3>⚙️ Ausrüstung (1 Slot pro Charakter)</h3>Jeder Charakter trägt höchstens 1 Gear (Waffe ODER Rüstung ODER Fahrzeug). Wechsel kostet vollen Preis, altes Gear verfällt. Boni wirken prozentual und skalieren mit Level mit.<table class='gdd-table'><tr><th>Gear</th><th>Slot</th><th>Preis</th><th>Bonus</th></tr>"+gr+"</table>"
 +"<h3>🎲 Modi & Daten</h3><b>KI-Duell:</b> 3 Stufen (Rookie Lvl 1 / Club Lvl 3 / Boss Lvl 5, Aggro .35/.6/.9, je Rush/Tank/Control/Chaos-Stil). <b>Online:</b> P2P-Code, Host simuliert (8 Snapshots/s), Gast sendet Züge. <b>Shop:</b> 📦50/2, 💼100/5, 💎200/12 (billige Karten häufiger). <b>Upgrade:</b> 2 gleiche Karten = +1 Lvl. <b>Belohnung:</b> Sieg 150 + 60/Krone + 5/Kill + Streak (max +100) + MVP +15, Niederlage 10, Remis 20. <b>Trophäen:</b> +30/−20 (Floor 0). <b>Daily-Quests:</b> 2 Siege +30, 15 Kills +40, 12 Karten +50. <b>Gratis:</b> +25 alle 4h. <b>Sieg-Truhe:</b> 1–3 👑 → 3/6/10 Karten in 5/15/30 Min. <b>Endboss:</b> ab 50 Siegen in Arena 5 (einmalig, +500 🪙). <b>Caps:</b> 30 Units, 300 Partikel, 30 Floats.";}
 function openGDD(){document.getElementById('gddBody').innerHTML=gddHTML();document.getElementById('gddM').classList.add('open');}
