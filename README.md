@@ -1,6 +1,10 @@
-# PEPAPEPT COINT Project
+# Pepe Royale — Arena-Duell
 
-Enthält Mini-Game (10s, x2 Gewinn), Leaderboard und Persistence.
+Ein mobiles 1-gegen-1-Echtzeit-Strategiespiel im Browser: Stelle dein Deck zusammen, setze Einheiten und Zauber ein und zerstöre gegnerische Türme. Spiele gegen die KI oder online per P2P-Raumcode. Fortschritt, Karten, Münzen und Duell-Historie werden lokal gespeichert.
+
+## Spielen
+
+Öffne `index.html` in einem modernen Browser. Wähle **KI-Duell** für ein Match gegen die KI oder **Online** zum Erstellen/Beitreten eines Duells (PeerJS benötigt eine Internetverbindung). Wähle im Kampf eine Karte und tippe auf deine Arena-Hälfte, um sie einzusetzen; Zauber können auf das Spielfeld gewirkt werden. Deck, Karten und Upgrades verwaltest du in den Tabs **Deck**, **Shop** und **Armee**.
 
 <!-- omgithub:readme:start -->
 ## 🚀 Build, play, and remix with OMGithub
