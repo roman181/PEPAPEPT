@@ -1,6 +1,6 @@
 # PEPAPEPT COINT Project
 
-Enthält Mini-Game (10s, x2 Gewinn), Leaderboard und Persistence.
+Enthält ein Sammelkarten-Duell mit Decks aus bis zu 6 Charakteren, PeerJS-Online-Multiplayer und Arena-Kämpfen. Trophäen und Spielverlauf werden lokal im Browser gespeichert. Eine Top-100-Rangliste, insbesondere eine spielerübergreifende, ist ohne Backend nicht verfügbar.
 
 <!-- omgithub:readme:start -->
 ## 🚀 Build, play, and remix with OMGithub
